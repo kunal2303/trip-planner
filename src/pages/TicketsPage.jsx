@@ -128,16 +128,14 @@ export default function TicketsPage() {
                   </a>
                 ) : (
                   <a
-                    href={`/api/proxy-file?url=${encodeURIComponent(item.url)}`}
+                    href={item.url}
                     target="_blank" rel="noreferrer"
                     className="flex items-center justify-center gap-2 py-10 bg-gray-50 rounded-xl text-sm text-indigo-500 font-medium border border-gray-100"
                   >
                     <FileText size={16} /> View PDF
                   </a>
                 )}
-                <a
-                  href={`/api/proxy-file?url=${encodeURIComponent(item.url)}`}
-                  target="_blank" rel="noreferrer"
+                <a href={item.url} target="_blank" rel="noreferrer"
                   className="flex items-center justify-center gap-2 mt-3 text-xs text-indigo-500 font-medium">
                   <Download size={12} /> Download / Open
                 </a>
