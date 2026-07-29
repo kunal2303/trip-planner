@@ -17,16 +17,23 @@ export default function TripsPage() {
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ name: '', destination: '', startDate: '', endDate: '' })
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const handleCreate = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) return
     setSaving(true)
-    const ref = await createTrip(form)
-    setSaving(false)
-    setShowModal(false)
-    setForm({ name: '', destination: '', startDate: '', endDate: '' })
-    navigate(`/trip/${ref.id}`)
+    setError('')
+    try {
+      const ref = await createTrip(form)
+      setSaving(false)
+      setShowModal(false)
+      setForm({ name: '', destination: '', startDate: '', endDate: '' })
+      navigate(`/trip/${ref.id}`)
+    } catch (err) {
+      setSaving(false)
+      setError(err.message || 'Failed to create trip. Check Firestore rules.')
+    }
   }
 
   const openTrip = (trip) => {
@@ -149,6 +156,7 @@ export default function TripsPage() {
               />
             </div>
           </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
           <button
             type="submit"
             disabled={saving}

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, serverTimestamp,
+  query, where, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from './AuthContext'
@@ -19,10 +19,11 @@ export function TripProvider({ children }) {
     const q = query(
       collection(db, 'trips'),
       where('uid', '==', user.uid),
-      orderBy('startDate', 'desc'),
     )
     return onSnapshot(q, snap => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      const data = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''))
       setTrips(data)
       setLoading(false)
     })
