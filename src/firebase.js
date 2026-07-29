@@ -15,6 +15,12 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
+// Surface missing env vars immediately in the UI
+if (!firebaseConfig.apiKey) {
+  document.body.innerHTML = '<div style="font-family:sans-serif;padding:2rem;color:red"><h2>Firebase config missing</h2><p>VITE_FIREBASE_* environment variables are not set in this deployment.</p></div>'
+  throw new Error('Firebase env vars not set')
+}
+
 const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
