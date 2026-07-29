@@ -123,7 +123,11 @@ export default function TicketsPage() {
               <div className="px-4 pb-4 pt-0">
                 <div className="h-px bg-gray-100 mb-3" />
                   <a href={item.url} target="_blank" rel="noreferrer" className="block">
-                    <img src={item.url} alt={item.name} className="w-full rounded-xl" />
+                    <img
+                      src={item.url.replace(/\.pdf$/i, '.jpg')}
+                      alt={item.name}
+                      className="w-full rounded-xl"
+                    />
                   </a>
                   <a href={item.url} download target="_blank" rel="noreferrer"
                     className="flex items-center justify-center gap-2 mt-3 text-xs text-indigo-500 font-medium">
