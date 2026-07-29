@@ -22,7 +22,6 @@ export const deleteItem = (tripId, sub, id) =>
   deleteDoc(tripDoc(tripId, sub, id))
 
 export async function uploadFile(_userId, _tripId, file) {
-  const resourceType = file.type === 'application/pdf' ? 'raw' : 'image'
   const cloudName = 'pue4fbxb'
   const uploadPreset = 'trip-planner'
 
@@ -31,9 +30,8 @@ export async function uploadFile(_userId, _tripId, file) {
   formData.append('upload_preset', uploadPreset)
   formData.append('folder', 'trip-planner')
 
-  const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`
-  console.log('[upload] posting to:', uploadUrl)
-  const res = await fetch(uploadUrl, {
+  // Always upload as image — Cloudinary converts PDFs to images automatically
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
     method: 'POST',
     body: formData,
   })
@@ -43,7 +41,6 @@ export async function uploadFile(_userId, _tripId, file) {
   }
 
   const data = await res.json()
-  console.log('[upload] secure_url:', data.secure_url)
   return {
     url: data.secure_url,
     publicId: data.public_id,
