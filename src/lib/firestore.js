@@ -23,6 +23,7 @@ export const deleteItem = (tripId, sub, id) =>
 
 export async function uploadFile(_userId, _tripId, file) {
   const resourceType = file.type === 'application/pdf' ? 'raw' : 'image'
+  console.log('[upload] file.type:', file.type, '→ resourceType:', resourceType)
 
   const sigRes = await fetch('/api/sign-upload', {
     method: 'POST',
@@ -31,6 +32,7 @@ export async function uploadFile(_userId, _tripId, file) {
   })
   if (!sigRes.ok) throw new Error('Failed to get upload signature')
   const { signature, timestamp, apiKey, cloudName, folder } = await sigRes.json()
+  console.log('[upload] cloudName:', cloudName, 'resourceType from server:', resourceType)
 
   const formData = new FormData()
   formData.append('file', file)
