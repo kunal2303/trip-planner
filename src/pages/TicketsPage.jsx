@@ -122,16 +122,15 @@ export default function TicketsPage() {
             {expanded === item.id && item.url && (
               <div className="px-4 pb-4 pt-0">
                 <div className="h-px bg-gray-100 mb-3" />
-                {item.type?.startsWith('image/') ? (
-                  <img src={item.url} alt={item.name} className="w-full rounded-xl" />
-                ) : (
-                  <iframe
-                    src={item.url}
-                    title={item.title}
-                    className="w-full rounded-xl border border-gray-100"
-                    style={{ height: '70vh' }}
+                <a href={item.url} target="_blank" rel="noreferrer" className="block">
+                  <img
+                    src={item.type?.startsWith('image/')
+                      ? item.url
+                      : item.url.replace(/\.[^.]+$/, '.jpg').replace('/upload/', '/upload/f_jpg,pg_1/')}
+                    alt={item.name}
+                    className="w-full rounded-xl"
                   />
-                )}
+                </a>
                 <a href={item.url} target="_blank" rel="noreferrer"
                   className="flex items-center justify-center gap-2 mt-3 text-xs text-indigo-500 font-medium">
                   <Download size={12} /> Open in browser
