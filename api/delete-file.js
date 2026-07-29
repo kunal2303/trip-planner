@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   if (!publicId) return res.status(400).json({ error: 'publicId required' })
 
   try {
-    await cloudinary.uploader.destroy(publicId, { resource_type: 'auto' })
+    await cloudinary.uploader.destroy(publicId, { resource_type: 'image' })
     res.status(200).json({ success: true })
   } catch (err) {
     res.status(500).json({ error: err.message })
