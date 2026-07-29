@@ -125,12 +125,18 @@ export default function TicketsPage() {
                 {item.type?.startsWith('image/') ? (
                   <img src={item.url} alt={item.name} className="w-full rounded-xl" />
                 ) : (
-                  <a href={item.url} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-2 bg-indigo-50 text-indigo-600 text-sm px-4 py-3 rounded-xl font-medium">
-                    <Download size={15} /> Open / Download
-                  </a>
+                  <iframe
+                    src={item.url}
+                    title={item.title}
+                    className="w-full rounded-xl border border-gray-100"
+                    style={{ height: '70vh' }}
+                  />
                 )}
-                {item.notes && <p className="text-xs text-gray-400 mt-3">{item.notes}</p>}
+                <a href={item.url} target="_blank" rel="noreferrer"
+                  className="flex items-center justify-center gap-2 mt-3 text-xs text-indigo-500 font-medium">
+                  <Download size={12} /> Open in browser
+                </a>
+                {item.notes && <p className="text-xs text-gray-400 mt-2">{item.notes}</p>}
               </div>
             )}
           </div>
