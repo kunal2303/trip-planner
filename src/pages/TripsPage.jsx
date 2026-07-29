@@ -12,7 +12,7 @@ function fmtDate(d) {
 
 export default function TripsPage() {
   const { logout, user } = useAuth()
-  const { trips, loading, createTrip, deleteTrip, setActiveTrip } = useTrips()
+  const { trips, loading, error: tripError, createTrip, deleteTrip, setActiveTrip } = useTrips()
   const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ name: '', destination: '', startDate: '', endDate: '' })
@@ -71,6 +71,12 @@ export default function TripsPage() {
         </div>
 
         {loading && <p className="text-gray-400 text-center py-12">Loading…</p>}
+
+        {tripError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 break-all">
+            <strong>Firebase error:</strong> {tripError}
+          </div>
+        )}
 
         {!loading && trips.length === 0 && (
           <div className="text-center py-16 text-gray-400">

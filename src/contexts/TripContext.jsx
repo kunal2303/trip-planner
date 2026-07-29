@@ -13,6 +13,7 @@ export function TripProvider({ children }) {
   const [trips, setTrips] = useState([])
   const [activeTrip, setActiveTrip] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!user) { setTrips([]); setLoading(false); return }
@@ -28,6 +29,7 @@ export function TripProvider({ children }) {
       setLoading(false)
     }, (err) => {
       console.error('Firestore snapshot error:', err.message)
+      setError(err.message)
       setLoading(false)
     })
   }, [user])
@@ -39,7 +41,7 @@ export function TripProvider({ children }) {
   const deleteTrip = (id) => deleteDoc(doc(db, 'trips', id))
 
   return (
-    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, loading, createTrip, updateTrip, deleteTrip }}>
+    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, loading, error, createTrip, updateTrip, deleteTrip }}>
       {children}
     </TripContext.Provider>
   )
