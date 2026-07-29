@@ -139,19 +139,26 @@ export default function ItineraryPage() {
           {places.length > 0 && (
             <div>
               <p className="text-xs text-gray-400 mb-1.5">Pick from saved places</p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <select
+                className="field"
+                value=""
+                onChange={e => {
+                  const place = places.find(p => p.id === e.target.value)
+                  if (place) {
+                    setForm(f => ({
+                      ...f,
+                      title: f.title || place.name,
+                      location: place.address || '',
+                      mapsUrl: place.mapsUrl || '',
+                    }))
+                  }
+                }}
+              >
+                <option value="">— select a place —</option>
                 {places.map(p => (
-                  <button key={p.id} type="button"
-                    onClick={() => pickPlace(p)}
-                    className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium border transition ${
-                      form.location.startsWith(p.name)
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200'
-                    }`}>
-                    {p.name}
-                  </button>
+                  <option key={p.id} value={p.id}>{p.name}{p.address ? ` · ${p.address}` : ''}</option>
                 ))}
-              </div>
+              </select>
             </div>
           )}
 
