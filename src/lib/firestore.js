@@ -22,11 +22,12 @@ export const deleteItem = (tripId, sub, id) =>
   deleteDoc(tripDoc(tripId, sub, id))
 
 export async function uploadFile(_userId, _tripId, file) {
-  // Get signed upload params from our backend
+  const resourceType = file.type === 'application/pdf' ? 'raw' : 'image'
+
   const sigRes = await fetch('/api/sign-upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ folder: 'trip-planner' }),
+    body: JSON.stringify({ folder: 'trip-planner', resourceType }),
   })
   if (!sigRes.ok) throw new Error('Failed to get upload signature')
   const { signature, timestamp, apiKey, cloudName, folder } = await sigRes.json()
@@ -38,7 +39,7 @@ export async function uploadFile(_userId, _tripId, file) {
   formData.append('signature', signature)
   formData.append('folder', folder)
 
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
     method: 'POST',
     body: formData,
   })

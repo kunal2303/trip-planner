@@ -9,7 +9,7 @@ cloudinary.config({
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { folder } = req.body || {}
+  const { folder, resourceType = 'image' } = req.body || {}
 
   try {
     const timestamp = Math.round(Date.now() / 1000)
@@ -26,6 +26,7 @@ export default async function handler(req, res) {
       apiKey: process.env.CLOUDINARY_API_KEY,
       cloudName: process.env.CLOUDINARY_CLOUD_NAME,
       folder: params.folder,
+      resourceType,
     })
   } catch (err) {
     res.status(500).json({ error: err.message })
