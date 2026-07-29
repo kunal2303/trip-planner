@@ -23,6 +23,7 @@ export default function TicketsPage() {
   const { user } = useAuth()
   const [items, setItems] = useState([])
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const [form, setForm] = useState({ title: '', category: 'Flight', notes: '' })
   const [expanded, setExpanded] = useState(null)
   const [titleError, setTitleError] = useState(false)
@@ -41,11 +42,17 @@ export default function TicketsPage() {
       return
     }
     setUploading(true)
-    const fileData = await uploadFile(user.uid, tripId, file)
-    await addItem(tripId, 'tickets', { ...form, ...fileData })
-    setUploading(false)
-    setForm({ title: '', category: 'Flight', notes: '' })
-    e.target.value = ''
+    setUploadError('')
+    try {
+      const fileData = await uploadFile(user.uid, tripId, file)
+      await addItem(tripId, 'tickets', { ...form, ...fileData })
+      setForm({ title: '', category: 'Flight', notes: '' })
+    } catch (err) {
+      setUploadError(err.message || 'Upload failed. Check Firebase Storage rules.')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
   }
 
   const handleDelete = async (item) => {
@@ -85,6 +92,7 @@ export default function TicketsPage() {
           {uploading ? 'Uploading…' : 'Attach PDF or image'}
           <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload} disabled={uploading} />
         </label>
+        {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
       </div>
 
       {items.length === 0 && (
