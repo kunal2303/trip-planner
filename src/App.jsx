@@ -10,6 +10,7 @@ import ExpensesPage from './pages/ExpensesPage'
 import PackingPage from './pages/PackingPage'
 import PlacesPage from './pages/PlacesPage'
 import NotesPage from './pages/NotesPage'
+import SharedTripPage from './pages/SharedTripPage'
 
 function AuthGate() {
   const { user } = useAuth()
@@ -47,7 +48,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AuthGate />
+        <Routes>
+          <Route path="/s/:shareToken" element={<SharedTripPage />} />
+          <Route path="*" element={<AuthGate />} />
+        </Routes>
       </AuthProvider>
     </BrowserRouter>
   )

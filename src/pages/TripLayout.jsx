@@ -1,6 +1,6 @@
 import { useParams, useNavigate, NavLink, Outlet } from 'react-router-dom'
-import { useEffect } from 'react'
-import { ArrowLeft, CalendarDays, Ticket, Wallet, Package, MapPin, FileText } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowLeft, CalendarDays, Ticket, Wallet, Package, MapPin, FileText, Share2, Check } from 'lucide-react'
 import { useTrips } from '../contexts/TripContext'
 
 const tabs = [
@@ -15,12 +15,25 @@ const tabs = [
 export default function TripLayout() {
   const { tripId } = useParams()
   const navigate = useNavigate()
-  const { trips, setActiveTrip, activeTrip } = useTrips()
+  const { trips, setActiveTrip, activeTrip, updateTrip } = useTrips()
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     const trip = trips.find(t => t.id === tripId)
     if (trip) setActiveTrip(trip)
   }, [trips, tripId])
+
+  const handleShare = async () => {
+    let token = activeTrip?.shareToken
+    if (!token || !activeTrip?.isPublic) {
+      token = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12)
+      await updateTrip(tripId, { shareToken: token, isPublic: true })
+    }
+    const url = `${window.location.origin}/s/${token}`
+    await navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -39,6 +52,13 @@ export default function TripLayout() {
               <p className="text-xs text-gray-400 truncate">{activeTrip.destination}</p>
             )}
           </div>
+          <button
+            onClick={handleShare}
+            className="p-1.5 rounded-xl text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition"
+            title="Copy share link"
+          >
+            {copied ? <Check size={18} className="text-green-500" /> : <Share2 size={18} />}
+          </button>
         </div>
       </header>
 

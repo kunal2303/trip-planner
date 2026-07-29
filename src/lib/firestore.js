@@ -1,6 +1,6 @@
 import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, serverTimestamp,
+  query, where, orderBy, serverTimestamp, getDocs, limit,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -58,4 +58,21 @@ export async function deleteFile(publicId) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ publicId }),
   })
+}
+
+export async function getTripByShareToken(token) {
+  const q = query(
+    collection(db, 'trips'),
+    where('shareToken', '==', token),
+    where('isPublic', '==', true),
+    limit(1),
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  return { id: snap.docs[0].id, ...snap.docs[0].data() }
+}
+
+export function getSubCollection(tripId, sub, cb) {
+  const q = query(collection(db, 'trips', tripId, sub), orderBy('createdAt', 'asc'))
+  return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
 }
