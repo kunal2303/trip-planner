@@ -26,6 +26,9 @@ export function TripProvider({ children }) {
         .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''))
       setTrips(data)
       setLoading(false)
+    }, (err) => {
+      console.error('Firestore snapshot error:', err.message)
+      setLoading(false)
     })
   }, [user])
 
