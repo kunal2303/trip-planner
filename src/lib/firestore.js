@@ -40,7 +40,6 @@ export async function uploadFile(_userId, _tripId, file) {
   formData.append('timestamp', timestamp)
   formData.append('signature', signature)
   formData.append('folder', folder)
-  formData.append('access_mode', 'public')
 
   const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`
   console.log('[upload] posting to:', uploadUrl)

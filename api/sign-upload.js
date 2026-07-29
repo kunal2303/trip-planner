@@ -16,7 +16,6 @@ export default async function handler(req, res) {
     const params = {
       timestamp,
       folder: folder || 'trip-planner',
-      access_mode: 'public',
     }
 
     const signature = cloudinary.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET)
