@@ -4,7 +4,7 @@ import { Trash2, FileText, Download, Upload } from 'lucide-react'
 import { subscribeSub, addItem, deleteItem, uploadFile, deleteFile } from '../lib/firestore'
 import { useAuth } from '../contexts/AuthContext'
 
-const CATEGORIES = ['Flight', 'Hotel', 'Train', 'Car', 'Ferry', 'Activity', 'Visa', 'Insurance', 'Other']
+const CATEGORIES = ['Bus','Flight', 'Hotel', 'Train', 'Car', 'Ferry', 'Activity', 'Visa', 'Insurance', 'Other']
 
 const CAT_COLORS = {
   Flight: 'bg-blue-50 text-blue-600',
