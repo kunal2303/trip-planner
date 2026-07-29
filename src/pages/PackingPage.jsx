@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Trash2, CheckSquare, Square } from 'lucide-react'
+import { Plus, Trash2, Check } from 'lucide-react'
 import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
 
 const TEMPLATES = {
-  'Clothing': ['T-shirts', 'Pants', 'Underwear', 'Socks', 'Jacket', 'Shoes', 'Swimwear'],
-  'Toiletries': ['Toothbrush', 'Toothpaste', 'Shampoo', 'Sunscreen', 'Deodorant'],
+  'Clothing':    ['T-shirts', 'Pants', 'Underwear', 'Socks', 'Jacket', 'Shoes', 'Swimwear'],
+  'Toiletries':  ['Toothbrush', 'Toothpaste', 'Shampoo', 'Sunscreen', 'Deodorant'],
   'Electronics': ['Phone charger', 'Adapter', 'Headphones', 'Power bank'],
-  'Documents': ['Passport', 'Travel insurance', 'Boarding passes', 'Hotel confirmation'],
+  'Documents':   ['Passport', 'Travel insurance', 'Boarding passes', 'Hotel confirmation'],
 }
 
 export default function PackingPage() {
@@ -32,79 +32,99 @@ export default function PackingPage() {
     setShowTemplates(false)
   }
 
-  const packed = items.filter(i => i.packed).length
-  const total = items.length
+  const unpacked = items.filter(i => !i.packed)
+  const packed = items.filter(i => i.packed)
+  const pct = items.length ? Math.round((packed.length / items.length) * 100) : 0
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-1">
-        <h2 className="font-semibold text-gray-800">Packing List</h2>
+      <div className="flex justify-between items-center mb-5">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">Packing List</h2>
+          {items.length > 0 && (
+            <p className="text-xs text-gray-400 mt-0.5">{packed.length}/{items.length} packed</p>
+          )}
+        </div>
         <button onClick={() => setShowTemplates(!showTemplates)}
-          className="text-xs text-blue-600 border border-blue-200 px-2 py-1 rounded-lg">
-          + Template
+          className={`btn-ghost border text-xs ${showTemplates ? 'border-indigo-400 bg-indigo-50' : 'border-indigo-200'}`}>
+          Templates
         </button>
       </div>
 
-      {total > 0 && (
-        <p className="text-sm text-gray-400 mb-3">{packed}/{total} packed</p>
-      )}
-
-      {showTemplates && (
-        <div className="bg-blue-50 rounded-xl p-3 mb-3 flex flex-wrap gap-2">
-          {Object.keys(TEMPLATES).map(cat => (
-            <button key={cat} onClick={() => addTemplate(cat)}
-              className="bg-white border border-blue-200 text-blue-700 text-xs px-3 py-1.5 rounded-full">
-              {cat}
-            </button>
-          ))}
+      {/* Progress bar */}
+      {items.length > 0 && (
+        <div className="mb-4">
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="text-xs text-indigo-500 font-medium mt-1">{pct}% packed</p>
         </div>
       )}
 
-      <form onSubmit={addSingle} className="flex gap-2 mb-4">
-        <input
-          value={newItem}
-          onChange={e => setNewItem(e.target.value)}
-          placeholder="Add item…"
-          className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button type="submit" className="bg-blue-600 text-white px-4 rounded-xl text-sm font-medium">
-          <Plus size={16} />
+      {/* Templates */}
+      {showTemplates && (
+        <div className="card p-4 mb-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Quick add</p>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.keys(TEMPLATES).map(cat => (
+              <button key={cat} onClick={() => addTemplate(cat)}
+                className="text-left text-sm px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-indigo-50 hover:text-indigo-600 text-gray-600 font-medium transition">
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add input */}
+      <form onSubmit={addSingle} className="flex gap-2 mb-5">
+        <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="Add item…" className="field flex-1" />
+        <button type="submit" className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shrink-0 hover:bg-indigo-700 active:scale-95 transition">
+          <Plus size={20} />
         </button>
       </form>
 
       {items.length === 0 && (
-        <p className="text-center text-gray-400 py-8 text-sm">Nothing to pack yet.</p>
+        <div className="text-center py-10">
+          <p className="text-gray-400 text-sm">Nothing to pack yet.</p>
+        </div>
       )}
 
-      <div className="space-y-1.5">
-        {items.filter(i => !i.packed).map(item => (
-          <div key={item.id} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100">
-            <button onClick={() => toggle(item)} className="text-gray-300 hover:text-blue-500 shrink-0">
-              <Square size={18} />
+      {/* Unpacked */}
+      <div className="space-y-2">
+        {unpacked.map(item => (
+          <div key={item.id} className="card flex items-center gap-3 px-4 py-3">
+            <button onClick={() => toggle(item)}
+              className="w-6 h-6 rounded-lg border-2 border-gray-300 flex items-center justify-center shrink-0 hover:border-indigo-400 transition">
             </button>
-            <span className="flex-1 text-sm text-gray-800">{item.name}</span>
-            <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="text-gray-300 hover:text-red-400">
-              <Trash2 size={14} />
-            </button>
-          </div>
-        ))}
-
-        {items.some(i => i.packed) && (
-          <p className="text-xs text-gray-400 pt-2 pb-1 font-medium">Packed</p>
-        )}
-
-        {items.filter(i => i.packed).map(item => (
-          <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100 opacity-60">
-            <button onClick={() => toggle(item)} className="text-blue-400 shrink-0">
-              <CheckSquare size={18} />
-            </button>
-            <span className="flex-1 text-sm text-gray-500 line-through">{item.name}</span>
-            <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="text-gray-300 hover:text-red-400">
+            <span className="flex-1 text-sm text-gray-800 font-medium">{item.name}</span>
+            <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
               <Trash2 size={14} />
             </button>
           </div>
         ))}
       </div>
+
+      {/* Packed */}
+      {packed.length > 0 && (
+        <>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-5 mb-2">Packed</p>
+          <div className="space-y-2">
+            {packed.map(item => (
+              <div key={item.id} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-50 border border-gray-100">
+                <button onClick={() => toggle(item)}
+                  className="w-6 h-6 rounded-lg bg-indigo-500 flex items-center justify-center shrink-0">
+                  <Check size={13} className="text-white" strokeWidth={3} />
+                </button>
+                <span className="flex-1 text-sm text-gray-400 line-through">{item.name}</span>
+                <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

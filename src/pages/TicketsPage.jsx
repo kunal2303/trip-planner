@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Trash2, FileText, Download } from 'lucide-react'
+import { Trash2, FileText, Download, Upload } from 'lucide-react'
 import { subscribeSub, addItem, deleteItem, uploadFile, deleteFile } from '../lib/firestore'
 import { useAuth } from '../contexts/AuthContext'
 
 const CATEGORIES = ['Flight', 'Hotel', 'Train', 'Car', 'Ferry', 'Activity', 'Visa', 'Insurance', 'Other']
+
+const CAT_COLORS = {
+  Flight: 'bg-blue-50 text-blue-600',
+  Hotel: 'bg-purple-50 text-purple-600',
+  Train: 'bg-green-50 text-green-600',
+  Car: 'bg-orange-50 text-orange-600',
+  Ferry: 'bg-cyan-50 text-cyan-600',
+  Activity: 'bg-pink-50 text-pink-600',
+  Visa: 'bg-red-50 text-red-600',
+  Insurance: 'bg-teal-50 text-teal-600',
+  Other: 'bg-gray-100 text-gray-500',
+}
 
 export default function TicketsPage() {
   const { tripId } = useParams()
@@ -34,60 +46,68 @@ export default function TicketsPage() {
 
   return (
     <div>
-      <h2 className="font-semibold text-gray-800 mb-4">Tickets & Documents</h2>
+      <h2 className="text-base font-bold text-gray-900 mb-5">Tickets & Documents</h2>
 
       {/* Upload form */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4 space-y-3">
-        <input
-          placeholder="Document title *"
-          value={form.title}
-          onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-          className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <select
-          value={form.category}
-          onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-          className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-        </select>
-        <label className={`block w-full text-center border-2 border-dashed ${uploading ? 'border-blue-400 bg-blue-50' : 'border-gray-300'} rounded-xl py-3 text-sm text-gray-500 cursor-pointer hover:border-blue-400`}>
-          {uploading ? 'Uploading…' : '📎 Tap to attach file (PDF, image)'}
+      <div className="card p-4 mb-5 space-y-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Add Document</p>
+        <input placeholder="Document title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="field" />
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {CATEGORIES.map(c => (
+            <button key={c} type="button" onClick={() => setForm(f => ({ ...f, category: c }))}
+              className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition ${
+                form.category === c ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
+              }`}>
+              {c}
+            </button>
+          ))}
+        </div>
+        <label className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-4 text-sm font-medium cursor-pointer transition ${
+          uploading ? 'border-indigo-300 bg-indigo-50 text-indigo-500' :
+          form.title.trim() ? 'border-indigo-300 text-indigo-500 hover:bg-indigo-50' : 'border-gray-200 text-gray-400'
+        }`}>
+          <Upload size={16} />
+          {uploading ? 'Uploading…' : 'Attach PDF or image'}
           <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload} disabled={!form.title.trim() || uploading} />
         </label>
       </div>
 
       {items.length === 0 && (
-        <p className="text-center text-gray-400 py-8 text-sm">No documents yet.</p>
+        <div className="text-center py-12">
+          <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <FileText size={24} className="text-gray-300" />
+          </div>
+          <p className="text-gray-400 text-sm">No documents yet</p>
+        </div>
       )}
 
       <div className="space-y-2">
         {items.map(item => (
-          <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div
-              className="flex items-center gap-3 p-3 cursor-pointer"
-              onClick={() => setExpanded(expanded === item.id ? null : item.id)}
-            >
-              <FileText size={18} className="text-blue-500 shrink-0" />
+          <div key={item.id} className="card overflow-hidden">
+            <div className="flex items-center gap-3 p-4 cursor-pointer" onClick={() => setExpanded(expanded === item.id ? null : item.id)}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${CAT_COLORS[item.category] || 'bg-gray-100 text-gray-400'}`}>
+                <FileText size={16} />
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-gray-900 truncate">{item.title}</p>
+                <p className="font-semibold text-sm text-gray-900 truncate">{item.title}</p>
                 <p className="text-xs text-gray-400">{item.category}</p>
               </div>
-              <button onClick={e => { e.stopPropagation(); handleDelete(item) }} className="text-gray-300 hover:text-red-400 p-1">
+              <button onClick={e => { e.stopPropagation(); handleDelete(item) }} className="p-1.5 text-gray-300 hover:text-red-400 transition">
                 <Trash2 size={14} />
               </button>
             </div>
             {expanded === item.id && item.url && (
-              <div className="px-3 pb-3">
+              <div className="px-4 pb-4 pt-0">
+                <div className="h-px bg-gray-100 mb-3" />
                 {item.type?.startsWith('image/') ? (
-                  <img src={item.url} alt={item.name} className="w-full rounded-lg" />
+                  <img src={item.url} alt={item.name} className="w-full rounded-xl" />
                 ) : (
                   <a href={item.url} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-2 bg-blue-50 text-blue-600 text-sm px-3 py-2 rounded-lg">
-                    <Download size={14} /> Open / Download PDF
+                    className="flex items-center gap-2 bg-indigo-50 text-indigo-600 text-sm px-4 py-3 rounded-xl font-medium">
+                    <Download size={15} /> Open / Download
                   </a>
                 )}
-                {item.notes && <p className="text-xs text-gray-500 mt-2">{item.notes}</p>}
+                {item.notes && <p className="text-xs text-gray-400 mt-3">{item.notes}</p>}
               </div>
             )}
           </div>

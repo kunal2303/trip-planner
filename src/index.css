@@ -4,13 +4,44 @@ body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #f8f9fb;
 }
 
 #root {
   min-height: 100svh;
 }
 
-/* Safe area for notched phones */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Bottom nav safe area */
+.pb-nav {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+/* Smooth tap highlight removal */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Input focus ring */
+.field {
+  @apply w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition;
+}
+
+.btn-primary {
+  @apply w-full bg-indigo-600 text-white py-3.5 rounded-2xl font-semibold text-sm hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-40;
+}
+
+.btn-ghost {
+  @apply flex items-center gap-1.5 text-indigo-600 text-sm font-medium px-3 py-1.5 rounded-xl hover:bg-indigo-50 active:bg-indigo-100 transition;
+}
+
+.card {
+  @apply bg-white rounded-2xl border border-gray-100 shadow-sm;
 }

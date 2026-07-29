@@ -5,14 +5,14 @@ import { subscribeSub, addItem, deleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
 
 const CATEGORIES = ['Food', 'Transport', 'Accommodation', 'Activities', 'Shopping', 'Health', 'Other']
-const CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'BRL', 'AUD', 'CAD', 'CHF', 'CNY', 'MXN']
+const CURRENCIES = ['INR','EUR', 'USD', 'GBP', 'JPY', 'BRL', 'AUD', 'CAD', 'CHF', 'CNY', 'MXN']
 
 export default function ExpensesPage() {
   const { tripId } = useParams()
   const [items, setItems] = useState([])
   const [showModal, setShowModal] = useState(false)
-  const [currency, setCurrency] = useState('EUR')
-  const [form, setForm] = useState({ title: '', amount: '', currency: 'EUR', category: 'Food', date: '', paidBy: '' })
+  const [currency, setCurrency] = useState('INR')
+  const [form, setForm] = useState({ title: '', amount: '', currency: 'INR', category: 'Food', date: '', paidBy: '' })
 
   useEffect(() => subscribeSub(tripId, 'expenses', setItems), [tripId])
 
