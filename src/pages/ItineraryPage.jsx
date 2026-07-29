@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Trash2, Clock, MapPin } from 'lucide-react'
-import { subscribeSub, addItem, deleteItem } from '../lib/firestore'
+import { Plus, Trash2, Clock, MapPin, Pencil } from 'lucide-react'
+import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
+
+const EMPTY = { date: '', time: '', title: '', location: '', notes: '' }
 
 export default function ItineraryPage() {
   const { tripId } = useParams()
   const [items, setItems] = useState([])
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ date: '', time: '', title: '', location: '', notes: '' })
+  const [editingItem, setEditingItem] = useState(null)
+  const [form, setForm] = useState(EMPTY)
 
   useEffect(() => subscribeSub(tripId, 'itinerary', setItems), [tripId])
 
@@ -19,18 +22,30 @@ export default function ItineraryPage() {
   }, {})
   const days = Object.keys(byDay).sort()
 
-  const handleAdd = async (e) => {
+  const openAdd = () => { setEditingItem(null); setForm(EMPTY); setShowModal(true) }
+  const openEdit = (item) => {
+    setEditingItem(item)
+    setForm({ date: item.date || '', time: item.time || '', title: item.title || '', location: item.location || '', notes: item.notes || '' })
+    setShowModal(true)
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    await addItem(tripId, 'itinerary', form)
+    if (editingItem) {
+      await updateItem(tripId, 'itinerary', editingItem.id, form)
+    } else {
+      await addItem(tripId, 'itinerary', form)
+    }
     setShowModal(false)
-    setForm({ date: '', time: '', title: '', location: '', notes: '' })
+    setForm(EMPTY)
+    setEditingItem(null)
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-base font-bold text-gray-900">Itinerary</h2>
-        <button onClick={() => setShowModal(true)} className="btn-ghost border border-indigo-200">
+        <button onClick={openAdd} className="btn-ghost border border-indigo-200">
           <Plus size={15} /> Add
         </button>
       </div>
@@ -53,11 +68,10 @@ export default function ItineraryPage() {
                 ? new Date(day + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
                 : 'No date'}
             </p>
-            {/* Timeline */}
             <div className="relative pl-5">
               <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
               <div className="space-y-3">
-                {byDay[day].map((item, i) => (
+                {byDay[day].map((item) => (
                   <div key={item.id} className="relative">
                     <div className="absolute -left-5 top-3 w-3 h-3 rounded-full bg-white border-2 border-indigo-400" />
                     <div className="card p-4">
@@ -78,10 +92,16 @@ export default function ItineraryPage() {
                           </div>
                           {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
                         </div>
-                        <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
-                          className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition shrink-0">
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => openEdit(item)}
+                            className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
+                            className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -92,8 +112,8 @@ export default function ItineraryPage() {
         ))}
       </div>
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Add Activity">
-        <form onSubmit={handleAdd} className="space-y-3">
+      <Modal open={showModal} onClose={() => { setShowModal(false); setEditingItem(null) }} title={editingItem ? 'Edit Activity' : 'Add Activity'}>
+        <form onSubmit={handleSubmit} className="space-y-3">
           <input required placeholder="Title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="field" />
           <div className="grid grid-cols-2 gap-3">
             <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="field" />
@@ -101,7 +121,7 @@ export default function ItineraryPage() {
           </div>
           <input placeholder="Location" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="field" />
           <textarea placeholder="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} className="field resize-none" />
-          <button type="submit" className="btn-primary">Add Activity</button>
+          <button type="submit" className="btn-primary">{editingItem ? 'Save Changes' : 'Add Activity'}</button>
         </form>
       </Modal>
     </div>

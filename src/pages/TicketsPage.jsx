@@ -4,17 +4,13 @@ import { Trash2, FileText, Upload, X, Plus } from 'lucide-react'
 import { subscribeSub, addItem, deleteItem, updateItem, uploadFile, deleteFile } from '../lib/firestore'
 import { useAuth } from '../contexts/AuthContext'
 
-const CATEGORIES = ['Bus','Flight', 'Hotel', 'Train', 'Car', 'Ferry', 'Activity', 'Visa', 'Insurance', 'Other']
+const CATEGORIES = ['Bus', 'Hotel', 'Train', 'Flight', 'Other']
 
 const CAT_COLORS = {
-  Flight: 'bg-blue-50 text-blue-600',
+  Bus: 'bg-orange-50 text-orange-600',
   Hotel: 'bg-purple-50 text-purple-600',
   Train: 'bg-green-50 text-green-600',
-  Car: 'bg-orange-50 text-orange-600',
-  Ferry: 'bg-cyan-50 text-cyan-600',
-  Activity: 'bg-pink-50 text-pink-600',
-  Visa: 'bg-red-50 text-red-600',
-  Insurance: 'bg-teal-50 text-teal-600',
+  Flight: 'bg-blue-50 text-blue-600',
   Other: 'bg-gray-100 text-gray-500',
 }
 
@@ -131,7 +127,7 @@ export default function TicketsPage() {
           className={`field transition ${titleError ? 'ring-2 ring-red-400 border-red-300 placeholder-red-400' : ''}`}
         />
         {titleError && <p className="text-xs text-red-500 -mt-1">Enter a title before attaching a file</p>}
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex flex-wrap gap-2">
           {CATEGORIES.map(c => (
             <button key={c} type="button" onClick={() => setForm(f => ({ ...f, category: c }))}
               className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition ${
