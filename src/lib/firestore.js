@@ -41,6 +41,7 @@ export async function uploadFile(_userId, _tripId, file) {
   }
 
   const data = await res.json()
+  console.log('[upload] pages:', data.pages, 'full response keys:', Object.keys(data))
   return {
     url: data.secure_url,
     publicId: data.public_id,
