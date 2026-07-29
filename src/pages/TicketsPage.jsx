@@ -56,7 +56,7 @@ export default function TicketsPage() {
   }
 
   const handleDelete = async (item) => {
-    if (item.path) await deleteFile(item.path).catch(() => {})
+    if (item.publicId) await deleteFile(item.publicId).catch(() => {})
     await deleteItem(tripId, 'tickets', item.id)
   }
 
