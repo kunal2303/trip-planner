@@ -21,22 +21,30 @@ export const updateItem = (tripId, sub, id, data) =>
 export const deleteItem = (tripId, sub, id) =>
   deleteDoc(tripDoc(tripId, sub, id))
 
-const CLOUDINARY_CLOUD = 'pue4fbxb'
-const CLOUDINARY_PRESET = 'trip-planner'
-
 export async function uploadFile(_userId, _tripId, file) {
+  // Get signed upload params from our backend
+  const sigRes = await fetch('/api/sign-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ folder: 'trip-planner' }),
+  })
+  if (!sigRes.ok) throw new Error('Failed to get upload signature')
+  const { signature, timestamp, apiKey, cloudName, folder } = await sigRes.json()
+
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('upload_preset', CLOUDINARY_PRESET)
+  formData.append('api_key', apiKey)
+  formData.append('timestamp', timestamp)
+  formData.append('signature', signature)
+  formData.append('folder', folder)
 
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, {
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
     method: 'POST',
     body: formData,
   })
-
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error?.message || 'Cloudinary upload failed')
+    throw new Error(err.error?.message || 'Upload failed')
   }
 
   const data = await res.json()
@@ -50,7 +58,10 @@ export async function uploadFile(_userId, _tripId, file) {
 }
 
 export async function deleteFile(publicId) {
-  // Cloudinary unsigned deletes require backend — skip silently
-  // Files will still be accessible but orphaned; use Cloudinary dashboard to clean up
-  console.info('Cloudinary file not deleted (requires signed request):', publicId)
+  if (!publicId) return
+  await fetch('/api/delete-file', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ publicId }),
+  })
 }

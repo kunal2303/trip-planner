@@ -24,7 +24,7 @@ export default function TicketsPage() {
   const [items, setItems] = useState([])
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
-  const [form, setForm] = useState({ title: '', category: 'Flight', notes: '' })
+  const [form, setForm] = useState({ title: '', category: 'Bus', notes: '' })
   const [expanded, setExpanded] = useState(null)
   const [titleError, setTitleError] = useState(false)
   const titleRef = useRef()
@@ -46,9 +46,9 @@ export default function TicketsPage() {
     try {
       const fileData = await uploadFile(user.uid, tripId, file)
       await addItem(tripId, 'tickets', { ...form, ...fileData })
-      setForm({ title: '', category: 'Flight', notes: '' })
+      setForm({ title: '', category: 'Bus', notes: '' })
     } catch (err) {
-      setUploadError(err.message || 'Upload failed. Check Firebase Storage rules.')
+      setUploadError(err.message || 'Upload failed')
     } finally {
       setUploading(false)
       e.target.value = ''
