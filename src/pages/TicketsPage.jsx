@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { Trash2, FileText, Download, Upload } from 'lucide-react'
 import { subscribeSub, addItem, deleteItem, uploadFile, deleteFile } from '../lib/firestore'
@@ -25,12 +25,21 @@ export default function TicketsPage() {
   const [uploading, setUploading] = useState(false)
   const [form, setForm] = useState({ title: '', category: 'Flight', notes: '' })
   const [expanded, setExpanded] = useState(null)
+  const [titleError, setTitleError] = useState(false)
+  const titleRef = useRef()
 
   useEffect(() => subscribeSub(tripId, 'tickets', setItems), [tripId])
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
-    if (!file || !form.title.trim()) return
+    if (!file) return
+    if (!form.title.trim()) {
+      setTitleError(true)
+      titleRef.current?.focus()
+      setTimeout(() => setTitleError(false), 1500)
+      e.target.value = ''
+      return
+    }
     setUploading(true)
     const fileData = await uploadFile(user.uid, tripId, file)
     await addItem(tripId, 'tickets', { ...form, ...fileData })
@@ -51,7 +60,14 @@ export default function TicketsPage() {
       {/* Upload form */}
       <div className="card p-4 mb-5 space-y-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Add Document</p>
-        <input placeholder="Document title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="field" />
+        <input
+          ref={titleRef}
+          placeholder="Document title *"
+          value={form.title}
+          onChange={e => { setForm(f => ({ ...f, title: e.target.value })); setTitleError(false) }}
+          className={`field transition ${titleError ? 'ring-2 ring-red-400 border-red-300 placeholder-red-400' : ''}`}
+        />
+        {titleError && <p className="text-xs text-red-500 -mt-1">Enter a title before attaching a file</p>}
         <div className="flex gap-2 overflow-x-auto pb-1">
           {CATEGORIES.map(c => (
             <button key={c} type="button" onClick={() => setForm(f => ({ ...f, category: c }))}
@@ -63,12 +79,11 @@ export default function TicketsPage() {
           ))}
         </div>
         <label className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-4 text-sm font-medium cursor-pointer transition ${
-          uploading ? 'border-indigo-300 bg-indigo-50 text-indigo-500' :
-          form.title.trim() ? 'border-indigo-300 text-indigo-500 hover:bg-indigo-50' : 'border-gray-200 text-gray-400'
+          uploading ? 'border-indigo-300 bg-indigo-50 text-indigo-500' : 'border-indigo-300 text-indigo-500 hover:bg-indigo-50'
         }`}>
           <Upload size={16} />
           {uploading ? 'Uploading…' : 'Attach PDF or image'}
-          <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload} disabled={!form.title.trim() || uploading} />
+          <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload} disabled={uploading} />
         </label>
       </div>
 
