@@ -12,12 +12,10 @@ export default async function handler(req, res) {
   const { folder } = req.body || {}
 
   try {
-    // Generate a signed upload signature so client can upload directly to Cloudinary
     const timestamp = Math.round(Date.now() / 1000)
     const params = {
       timestamp,
       folder: folder || 'trip-planner',
-      upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET,
     }
 
     const signature = cloudinary.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET)
