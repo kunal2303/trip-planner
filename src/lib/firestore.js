@@ -47,6 +47,7 @@ export async function uploadFile(_userId, _tripId, file) {
     name: file.name,
     type: file.type,
     size: file.size,
+    pages: data.pages || 1,
   }
 }
 
