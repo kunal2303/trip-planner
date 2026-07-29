@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Trash2, Clock, MapPin, Pencil } from 'lucide-react'
+import { Plus, Trash2, Clock, MapPin, Pencil, ExternalLink } from 'lucide-react'
 import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
 
-const EMPTY = { date: '', time: '', title: '', location: '', notes: '' }
+const EMPTY = { date: '', time: '', title: '', location: '', mapsUrl: '', notes: '' }
 
 export default function ItineraryPage() {
   const { tripId } = useParams()
   const [items, setItems] = useState([])
+  const [places, setPlaces] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [form, setForm] = useState(EMPTY)
 
   useEffect(() => subscribeSub(tripId, 'itinerary', setItems), [tripId])
+  useEffect(() => subscribeSub(tripId, 'places', setPlaces), [tripId])
 
   const byDay = items.reduce((acc, item) => {
     const day = item.date || 'No date'
@@ -25,7 +27,7 @@ export default function ItineraryPage() {
   const openAdd = () => { setEditingItem(null); setForm(EMPTY); setShowModal(true) }
   const openEdit = (item) => {
     setEditingItem(item)
-    setForm({ date: item.date || '', time: item.time || '', title: item.title || '', location: item.location || '', notes: item.notes || '' })
+    setForm({ date: item.date || '', time: item.time || '', title: item.title || '', location: item.location || '', mapsUrl: item.mapsUrl || '', notes: item.notes || '' })
     setShowModal(true)
   }
 
@@ -39,6 +41,10 @@ export default function ItineraryPage() {
     setShowModal(false)
     setForm(EMPTY)
     setEditingItem(null)
+  }
+
+  const pickPlace = (place) => {
+    setForm(f => ({ ...f, location: place.name + (place.address ? `, ${place.address}` : ''), mapsUrl: place.mapsUrl || '' }))
   }
 
   return (
@@ -90,6 +96,12 @@ export default function ItineraryPage() {
                               </span>
                             )}
                           </div>
+                          {item.mapsUrl && (
+                            <a href={item.mapsUrl} target="_blank" rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-indigo-500 font-medium mt-1.5">
+                              <ExternalLink size={11} /> View on Maps
+                            </a>
+                          )}
                           {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -114,13 +126,41 @@ export default function ItineraryPage() {
 
       <Modal open={showModal} onClose={() => { setShowModal(false); setEditingItem(null) }} title={editingItem ? 'Edit Activity' : 'Add Activity'}>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input required placeholder="Title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="field" />
+          <input required placeholder="Title *" value={form.title}
+            onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="field" />
           <div className="grid grid-cols-2 gap-3">
-            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="field" />
-            <input type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} className="field" />
+            <input type="date" value={form.date}
+              onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="field" />
+            <input type="time" value={form.time}
+              onChange={e => setForm(f => ({ ...f, time: e.target.value }))} className="field" />
           </div>
-          <input placeholder="Location" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="field" />
-          <textarea placeholder="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} className="field resize-none" />
+
+          {/* Pick from saved places */}
+          {places.length > 0 && (
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">Pick from saved places</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {places.map(p => (
+                  <button key={p.id} type="button"
+                    onClick={() => pickPlace(p)}
+                    className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium border transition ${
+                      form.location.startsWith(p.name)
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200'
+                    }`}>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <input placeholder="Location" value={form.location}
+            onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="field" />
+          <input placeholder="Maps URL" value={form.mapsUrl}
+            onChange={e => setForm(f => ({ ...f, mapsUrl: e.target.value }))} className="field" />
+          <textarea placeholder="Notes" value={form.notes}
+            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} className="field resize-none" />
           <button type="submit" className="btn-primary">{editingItem ? 'Save Changes' : 'Add Activity'}</button>
         </form>
       </Modal>
