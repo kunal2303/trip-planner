@@ -41,7 +41,9 @@ export async function uploadFile(_userId, _tripId, file) {
   formData.append('signature', signature)
   formData.append('folder', folder)
 
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`
+  console.log('[upload] posting to:', uploadUrl)
+  const res = await fetch(uploadUrl, {
     method: 'POST',
     body: formData,
   })
@@ -51,6 +53,7 @@ export async function uploadFile(_userId, _tripId, file) {
   }
 
   const data = await res.json()
+  console.log('[upload] secure_url:', data.secure_url)
   return {
     url: data.secure_url,
     publicId: data.public_id,
