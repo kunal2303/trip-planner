@@ -30,10 +30,12 @@ export default function SharedTripPage() {
   const [selectedNote, setSelectedNote] = useState(null)
 
   useEffect(() => {
-    getTripByShareToken(shareToken).then(t => {
-      if (!t) { setNotFound(true); return }
-      setTrip(t)
-    })
+    getTripByShareToken(shareToken)
+      .then(t => {
+        if (!t) { setNotFound(true); return }
+        setTrip(t)
+      })
+      .catch(() => setNotFound(true))
   }, [shareToken])
 
   useEffect(() => {
