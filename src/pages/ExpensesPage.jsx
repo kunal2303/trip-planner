@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
-import { subscribeSub, addItem, deleteItem } from '../lib/firestore'
+import { Plus, Trash2, Pencil } from 'lucide-react'
+import { subscribeSub, addItem, deleteItem, updateItem } from '../lib/firestore'
 import Modal from '../components/Modal'
 
 const CATEGORIES = ['Food', 'Transport', 'Accommodation', 'Activities', 'Shopping', 'Health', 'Other']
 const CURRENCIES = ['INR','EUR', 'USD', 'GBP', 'JPY', 'BRL', 'AUD', 'CAD', 'CHF', 'CNY', 'MXN']
 
+const EMPTY = { title: '', amount: '', currency: 'INR', category: 'Food', date: '', paidBy: '', notes: '' }
+
 export default function ExpensesPage() {
   const { tripId } = useParams()
   const [items, setItems] = useState([])
   const [showModal, setShowModal] = useState(false)
+  const [editingItem, setEditingItem] = useState(null)
   const [currency, setCurrency] = useState('INR')
-  const [form, setForm] = useState({ title: '', amount: '', currency: 'INR', category: 'Food', date: '', paidBy: '' })
+  const [form, setForm] = useState(EMPTY)
 
   useEffect(() => subscribeSub(tripId, 'expenses', setItems), [tripId])
 
@@ -24,11 +27,24 @@ export default function ExpensesPage() {
     return acc
   }, {})
 
-  const handleAdd = async (e) => {
+  const openAdd = () => { setEditingItem(null); setForm({ ...EMPTY, currency }); setShowModal(true) }
+  const openEdit = (item) => {
+    setEditingItem(item)
+    setForm({ title: item.title || '', amount: String(item.amount || ''), currency: item.currency || 'INR', category: item.category || 'Food', date: item.date || '', paidBy: item.paidBy || '', notes: item.notes || '' })
+    setShowModal(true)
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    await addItem(tripId, 'expenses', { ...form, amount: parseFloat(form.amount) })
+    const data = { ...form, amount: parseFloat(form.amount) }
+    if (editingItem) {
+      await updateItem(tripId, 'expenses', editingItem.id, data)
+    } else {
+      await addItem(tripId, 'expenses', data)
+    }
     setShowModal(false)
-    setForm({ title: '', amount: '', currency, category: 'Food', date: '', paidBy: '' })
+    setEditingItem(null)
+    setForm({ ...EMPTY, currency })
   }
 
   return (
@@ -41,7 +57,7 @@ export default function ExpensesPage() {
             {CURRENCIES.map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
-        <button onClick={() => setShowModal(true)}
+        <button onClick={openAdd}
           className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-xl text-sm font-medium">
           <Plus size={14} /> Add
         </button>
@@ -70,17 +86,21 @@ export default function ExpensesPage() {
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm text-gray-900 truncate">{item.title}</p>
               <p className="text-xs text-gray-400">{item.category}{item.date ? ` · ${item.date}` : ''}{item.paidBy ? ` · ${item.paidBy}` : ''}</p>
+              {item.notes && <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{item.notes}</p>}
             </div>
             <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{item.currency} {parseFloat(item.amount).toFixed(2)}</span>
-            <button onClick={() => deleteItem(tripId, 'expenses', item.id)} className="text-gray-300 hover:text-red-400">
+            <button onClick={() => openEdit(item)} className="p-1.5 text-gray-300 hover:text-indigo-400 transition">
+              <Pencil size={14} />
+            </button>
+            <button onClick={() => deleteItem(tripId, 'expenses', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
               <Trash2 size={14} />
             </button>
           </div>
         ))}
       </div>
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Add Expense">
-        <form onSubmit={handleAdd} className="space-y-3">
+      <Modal open={showModal} onClose={() => { setShowModal(false); setEditingItem(null) }} title={editingItem ? 'Edit Expense' : 'Add Expense'}>
+        <form onSubmit={handleSubmit} className="space-y-3">
           <input required placeholder="Description *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
             className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <div className="grid grid-cols-2 gap-3">
@@ -101,7 +121,9 @@ export default function ExpensesPage() {
             <input placeholder="Paid by" value={form.paidBy} onChange={e => setForm(f => ({ ...f, paidBy: e.target.value }))}
               className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <button type="submit" className="w-full bg-blue-600 text-white py-2.5 rounded-xl font-medium">Add Expense</button>
+          <textarea placeholder="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+            rows={2} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          <button type="submit" className="w-full bg-blue-600 text-white py-2.5 rounded-xl font-medium">{editingItem ? 'Save Changes' : 'Add Expense'}</button>
         </form>
       </Modal>
     </div>

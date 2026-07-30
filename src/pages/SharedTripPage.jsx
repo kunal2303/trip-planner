@@ -228,6 +228,7 @@ function SharedExpenses({ items }) {
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm text-gray-900 truncate">{item.title}</p>
               <p className="text-xs text-gray-400">{item.category}{item.date ? ` · ${item.date}` : ''}{item.paidBy ? ` · ${item.paidBy}` : ''}</p>
+              {item.notes && <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{item.notes}</p>}
             </div>
             <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{item.currency} {parseFloat(item.amount || 0).toFixed(2)}</span>
           </div>

@@ -1,26 +1,41 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Trash2, ExternalLink, CheckCircle, Circle } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, CheckCircle, Circle, Pencil } from 'lucide-react'
 import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
 
 const CATEGORIES = ['Restaurant', 'Attraction', 'Museum', 'Beach', 'Hotel', 'Bar', 'Shop', 'Park', 'Other']
 const CAT_EMOJI = { Restaurant: '🍜', Attraction: '🗺', Museum: '🏛', Beach: '🏖', Hotel: '🏨', Bar: '🍸', Shop: '🛒', Park: '🌳', Other: '📍' }
 
+const EMPTY = { name: '', category: 'Restaurant', address: '', mapsUrl: '', notes: '', visited: false }
+
 export default function PlacesPage() {
   const { tripId } = useParams()
   const [items, setItems] = useState([])
   const [showModal, setShowModal] = useState(false)
+  const [editingItem, setEditingItem] = useState(null)
   const [filter, setFilter] = useState('All')
-  const [form, setForm] = useState({ name: '', category: 'Restaurant', address: '', mapsUrl: '', notes: '', visited: false })
+  const [form, setForm] = useState(EMPTY)
 
   useEffect(() => subscribeSub(tripId, 'places', setItems), [tripId])
 
-  const handleAdd = async (e) => {
+  const openAdd = () => { setEditingItem(null); setForm(EMPTY); setShowModal(true) }
+  const openEdit = (item) => {
+    setEditingItem(item)
+    setForm({ name: item.name || '', category: item.category || 'Restaurant', address: item.address || '', mapsUrl: item.mapsUrl || '', notes: item.notes || '', visited: item.visited || false })
+    setShowModal(true)
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    await addItem(tripId, 'places', form)
+    if (editingItem) {
+      await updateItem(tripId, 'places', editingItem.id, form)
+    } else {
+      await addItem(tripId, 'places', form)
+    }
     setShowModal(false)
-    setForm({ name: '', category: 'Restaurant', address: '', mapsUrl: '', notes: '', visited: false })
+    setEditingItem(null)
+    setForm(EMPTY)
   }
 
   const cats = ['All', ...new Set(items.map(i => i.category))]
@@ -36,7 +51,7 @@ export default function PlacesPage() {
             <p className="text-xs text-gray-400 mt-0.5">{visitedCount}/{items.length} visited</p>
           )}
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-ghost border border-indigo-200">
+        <button onClick={openAdd} className="btn-ghost border border-indigo-200">
           <Plus size={15} /> Add
         </button>
       </div>
@@ -92,7 +107,10 @@ export default function PlacesPage() {
                     ? <CheckCircle size={20} className="text-indigo-500" />
                     : <Circle size={20} />}
                 </button>
-                <button onClick={() => deleteItem(tripId, 'places', item.id)} className="text-gray-300 hover:text-red-400 transition">
+                <button onClick={() => openEdit(item)} className="p-1 text-gray-300 hover:text-indigo-400 transition">
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => deleteItem(tripId, 'places', item.id)} className="p-1 text-gray-300 hover:text-red-400 transition">
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -101,8 +119,8 @@ export default function PlacesPage() {
         ))}
       </div>
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Save Place">
-        <form onSubmit={handleAdd} className="space-y-3">
+      <Modal open={showModal} onClose={() => { setShowModal(false); setEditingItem(null) }} title={editingItem ? 'Edit Place' : 'Save Place'}>
+        <form onSubmit={handleSubmit} className="space-y-3">
           <input required placeholder="Name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="field" />
           <div className="flex gap-2 overflow-x-auto pb-1">
             {CATEGORIES.map(c => (
@@ -117,7 +135,7 @@ export default function PlacesPage() {
           <input placeholder="Address" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className="field" />
           <input placeholder="Google Maps URL" value={form.mapsUrl} onChange={e => setForm(f => ({ ...f, mapsUrl: e.target.value }))} className="field" />
           <textarea placeholder="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="field resize-none" />
-          <button type="submit" className="btn-primary">Save Place</button>
+          <button type="submit" className="btn-primary">{editingItem ? 'Save Changes' : 'Save Place'}</button>
         </form>
       </Modal>
     </div>
