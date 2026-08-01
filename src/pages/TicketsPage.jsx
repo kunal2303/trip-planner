@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useOutletContext } from 'react-router-dom'
 import { Trash2, FileText, Upload, X, Plus } from 'lucide-react'
 import { subscribeSub, addItem, deleteItem, updateItem, uploadFile, deleteFile } from '../lib/firestore'
 import { useAuth } from '../contexts/AuthContext'
@@ -21,16 +21,18 @@ function pageUrl(url, page) {
 export default function TicketsPage() {
   const { tripId } = useParams()
   const { user } = useAuth()
+  const { isOwner, sharedSections } = useOutletContext() || {}
+  const canEdit = isOwner || sharedSections?.includes('tickets')
   const [items, setItems] = useState([])
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [form, setForm] = useState({ title: '', category: 'Bus', notes: '' })
   const [expanded, setExpanded] = useState(null)
   const [titleError, setTitleError] = useState(false)
-  const [addingTo, setAddingTo] = useState(null) // item.id we're adding a file to
+  const [addingTo, setAddingTo] = useState(null)
   const titleRef = useRef()
 
-  useEffect(() => subscribeSub(tripId, 'tickets', setItems), [tripId])
+  useEffect(() => subscribeSub(tripId, 'tickets', canEdit ? setItems : () => {}), [tripId, canEdit])
 
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || [])
@@ -117,7 +119,8 @@ export default function TicketsPage() {
     <div>
       <h2 className="text-base font-bold text-gray-900 mb-5">Tickets & Documents</h2>
 
-      <div className="card p-4 mb-5 space-y-3">
+      {canEdit && (
+        <div className="card p-4 mb-5 space-y-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Add Document</p>
         <input
           ref={titleRef}
@@ -146,6 +149,7 @@ export default function TicketsPage() {
         </label>
         {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
       </div>
+      )}
 
       {items.length === 0 && (
         <div className="text-center py-12">
@@ -169,7 +173,7 @@ export default function TicketsPage() {
                   <p className="font-semibold text-sm text-gray-900 truncate">{item.title}</p>
                   <p className="text-xs text-gray-400">{item.category} · {files.length} file{files.length !== 1 ? 's' : ''}</p>
                 </div>
-                <button onClick={e => { e.stopPropagation(); handleDelete(item) }} className="p-1.5 text-gray-300 hover:text-red-400 transition">
+                <button onClick={e => { e.stopPropagation(); handleDelete(item) }} className={`p-1.5 text-gray-300 hover:text-red-400 transition ${!canEdit ? 'hidden' : ''}`}>
                   <Trash2 size={14} />
                 </button>
               </div>

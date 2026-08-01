@@ -31,10 +31,9 @@ export default function TripLayout() {
   }, [trips, tripId])
 
   const isOwner = activeTrip?.uid === user?.uid
+  const tripLoaded = !!activeTrip
   const sharedSections = (activeTrip?.sharedSections?.length > 0) ? activeTrip.sharedSections : ALL_SECTIONS
-  const visibleTabs = isOwner
-    ? ALL_TABS
-    : ALL_TABS.filter(t => sharedSections.includes(t.to))
+  const visibleTabs = ALL_TABS
 
   const openShareModal = () => {
     setSections(activeTrip?.sharedSections || ALL_SECTIONS)
@@ -94,13 +93,13 @@ export default function TripLayout() {
 
       {/* Page content */}
       <main className="flex-1 max-w-lg w-full mx-auto px-4 py-4 pb-nav overflow-y-auto">
-        <Outlet />
+        <Outlet context={{ isOwner, sharedSections }} />
       </main>
 
       {/* Bottom nav bar */}
       <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-100 z-30 safe-bottom">
         <div className="flex max-w-lg mx-auto">
-          {visibleTabs.map(({ to, label, icon: Icon }) => (
+          {tripLoaded && visibleTabs.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}

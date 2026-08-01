@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useOutletContext } from 'react-router-dom'
 import { Plus, Trash2, Pencil } from 'lucide-react'
 import { subscribeSub, addItem, deleteItem, updateItem } from '../lib/firestore'
 import Modal from '../components/Modal'
@@ -11,13 +11,15 @@ const EMPTY = { title: '', amount: '', currency: 'INR', category: 'Food', date: 
 
 export default function ExpensesPage() {
   const { tripId } = useParams()
+  const { isOwner, sharedSections } = useOutletContext() || {}
+  const canEdit = isOwner || sharedSections?.includes('expenses')
   const [items, setItems] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [currency, setCurrency] = useState('INR')
   const [form, setForm] = useState(EMPTY)
 
-  useEffect(() => subscribeSub(tripId, 'expenses', setItems), [tripId])
+  useEffect(() => subscribeSub(tripId, 'expenses', canEdit ? setItems : () => {}), [tripId, canEdit])
 
   const total = items.filter(i => i.currency === currency).reduce((s, i) => s + parseFloat(i.amount || 0), 0)
 
@@ -58,7 +60,7 @@ export default function ExpensesPage() {
           </select>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-xl text-sm font-medium">
+          className={`flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-xl text-sm font-medium ${!canEdit ? 'invisible' : ''}`}>
           <Plus size={14} /> Add
         </button>
       </div>
@@ -89,10 +91,10 @@ export default function ExpensesPage() {
               {item.notes && <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{item.notes}</p>}
             </div>
             <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{item.currency} {parseFloat(item.amount).toFixed(2)}</span>
-            <button onClick={() => openEdit(item)} className="p-1.5 text-gray-300 hover:text-indigo-400 transition">
+            <button onClick={() => openEdit(item)} className={`p-1.5 text-gray-300 hover:text-indigo-400 transition ${!canEdit ? 'hidden' : ''}`}>
               <Pencil size={14} />
             </button>
-            <button onClick={() => deleteItem(tripId, 'expenses', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
+            <button onClick={() => deleteItem(tripId, 'expenses', item.id)} className={`p-1.5 text-gray-300 hover:text-red-400 transition ${!canEdit ? 'hidden' : ''}`}>
               <Trash2 size={14} />
             </button>
           </div>

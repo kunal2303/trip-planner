@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useOutletContext } from 'react-router-dom'
 import { Plus, Trash2, Check } from 'lucide-react'
 import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
 
@@ -12,11 +12,13 @@ const TEMPLATES = {
 
 export default function PackingPage() {
   const { tripId } = useParams()
+  const { isOwner, sharedSections } = useOutletContext() || {}
+  const canEdit = isOwner || sharedSections?.includes('packing')
   const [items, setItems] = useState([])
   const [newItem, setNewItem] = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
 
-  useEffect(() => subscribeSub(tripId, 'packing', setItems), [tripId])
+  useEffect(() => subscribeSub(tripId, 'packing', canEdit ? setItems : () => {}), [tripId, canEdit])
 
   const addSingle = async (e) => {
     e.preventDefault()
@@ -45,10 +47,12 @@ export default function PackingPage() {
             <p className="text-xs text-gray-400 mt-0.5">{packed.length}/{items.length} packed</p>
           )}
         </div>
-        <button onClick={() => setShowTemplates(!showTemplates)}
-          className={`btn-ghost border text-xs ${showTemplates ? 'border-indigo-400 bg-indigo-50' : 'border-indigo-200'}`}>
-          Templates
-        </button>
+        {canEdit && (
+          <button onClick={() => setShowTemplates(!showTemplates)}
+            className={`btn-ghost border text-xs ${showTemplates ? 'border-indigo-400 bg-indigo-50' : 'border-indigo-200'}`}>
+            Templates
+          </button>
+        )}
       </div>
 
       {/* Progress bar */}
@@ -77,12 +81,14 @@ export default function PackingPage() {
       )}
 
       {/* Add input */}
-      <form onSubmit={addSingle} className="flex gap-2 mb-5">
-        <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="Add item…" className="field flex-1" />
-        <button type="submit" className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shrink-0 hover:bg-indigo-700 active:scale-95 transition">
-          <Plus size={20} />
-        </button>
-      </form>
+      {canEdit && (
+        <form onSubmit={addSingle} className="flex gap-2 mb-5">
+          <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="Add item…" className="field flex-1" />
+          <button type="submit" className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shrink-0 hover:bg-indigo-700 active:scale-95 transition">
+            <Plus size={20} />
+          </button>
+        </form>
+      )}
 
       {items.length === 0 && (
         <div className="text-center py-10">
@@ -98,9 +104,11 @@ export default function PackingPage() {
               className="w-6 h-6 rounded-lg border-2 border-gray-300 flex items-center justify-center shrink-0 hover:border-indigo-400 transition">
             </button>
             <span className="flex-1 text-sm text-gray-800 font-medium">{item.name}</span>
-            <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
-              <Trash2 size={14} />
-            </button>
+            {canEdit && (
+              <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -117,9 +125,11 @@ export default function PackingPage() {
                   <Check size={13} className="text-white" strokeWidth={3} />
                 </button>
                 <span className="flex-1 text-sm text-gray-400 line-through">{item.name}</span>
-                <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
-                  <Trash2 size={14} />
-                </button>
+                {canEdit && (
+                  <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
             ))}
           </div>

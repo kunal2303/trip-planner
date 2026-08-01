@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useOutletContext } from 'react-router-dom'
 import { Plus, Trash2, Clock, MapPin, Pencil, ExternalLink } from 'lucide-react'
 import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
@@ -8,13 +8,15 @@ const EMPTY = { date: '', time: '', title: '', location: '', mapsUrl: '', notes:
 
 export default function ItineraryPage() {
   const { tripId } = useParams()
+  const { isOwner, sharedSections } = useOutletContext() || {}
+  const canEdit = isOwner || sharedSections?.includes('itinerary')
   const [items, setItems] = useState([])
   const [places, setPlaces] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [form, setForm] = useState(EMPTY)
 
-  useEffect(() => subscribeSub(tripId, 'itinerary', setItems), [tripId])
+  useEffect(() => subscribeSub(tripId, 'itinerary', canEdit ? setItems : () => {}), [tripId, canEdit])
   useEffect(() => subscribeSub(tripId, 'places', setPlaces), [tripId])
 
   const byDay = items.reduce((acc, item) => {
@@ -51,9 +53,11 @@ export default function ItineraryPage() {
     <div>
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-base font-bold text-gray-900">Itinerary</h2>
-        <button onClick={openAdd} className="btn-ghost border border-indigo-200">
-          <Plus size={15} /> Add
-        </button>
+        {canEdit && (
+          <button onClick={openAdd} className="btn-ghost border border-indigo-200">
+            <Plus size={15} /> Add
+          </button>
+        )}
       </div>
 
       {items.length === 0 && (
@@ -105,14 +109,16 @@ export default function ItineraryPage() {
                           {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          <button onClick={() => openEdit(item)}
-                            className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
-                            <Pencil size={14} />
-                          </button>
-                          <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
-                            className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
-                            <Trash2 size={14} />
-                          </button>
+                          {canEdit && (<>
+                            <button onClick={() => openEdit(item)}
+                              className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
+                              <Pencil size={14} />
+                            </button>
+                            <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
+                              className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
+                              <Trash2 size={14} />
+                            </button>
+                          </>)}
                         </div>
                       </div>
                     </div>
