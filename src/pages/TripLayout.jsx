@@ -2,8 +2,9 @@ import { useParams, useNavigate, NavLink, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, CalendarDays, Ticket, Wallet, Package, MapPin, FileText, Share2, Check, X } from 'lucide-react'
 import { useTrips } from '../contexts/TripContext'
+import { useAuth } from '../contexts/AuthContext'
 
-const tabs = [
+const ALL_TABS = [
   { to: 'itinerary', label: 'Plan',     icon: CalendarDays },
   { to: 'tickets',   label: 'Tickets',  icon: Ticket },
   { to: 'expenses',  label: 'Expenses', icon: Wallet },
@@ -18,6 +19,7 @@ const SECTION_LABELS = { itinerary: 'Plan', tickets: 'Tickets', expenses: 'Expen
 export default function TripLayout() {
   const { tripId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { trips, setActiveTrip, activeTrip, updateTrip } = useTrips()
   const [showShareModal, setShowShareModal] = useState(false)
   const [sections, setSections] = useState(ALL_SECTIONS)
@@ -27,6 +29,12 @@ export default function TripLayout() {
     const trip = trips.find(t => t.id === tripId)
     if (trip) setActiveTrip(trip)
   }, [trips, tripId])
+
+  const isOwner = activeTrip?.uid === user?.uid
+  const sharedSections = activeTrip?.sharedSections || ALL_SECTIONS
+  const visibleTabs = isOwner
+    ? ALL_TABS
+    : ALL_TABS.filter(t => sharedSections.includes(t.to))
 
   const openShareModal = () => {
     setSections(activeTrip?.sharedSections || ALL_SECTIONS)
@@ -73,12 +81,14 @@ export default function TripLayout() {
               <p className="text-xs text-gray-400 truncate">{activeTrip.destination}</p>
             )}
           </div>
-          <button
-            onClick={openShareModal}
-            className="p-1.5 rounded-xl text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition"
-          >
-            <Share2 size={18} />
-          </button>
+          {isOwner && (
+            <button
+              onClick={openShareModal}
+              className="p-1.5 rounded-xl text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition"
+            >
+              <Share2 size={18} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -90,7 +100,7 @@ export default function TripLayout() {
       {/* Bottom nav bar */}
       <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-100 z-30 safe-bottom">
         <div className="flex max-w-lg mx-auto">
-          {tabs.map(({ to, label, icon: Icon }) => (
+          {visibleTabs.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
