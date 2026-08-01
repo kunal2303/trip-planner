@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, MapPin, Calendar, Trash2, LogOut, ChevronRight } from 'lucide-react'
+import { Plus, MapPin, Calendar, Trash2, LogOut, ChevronRight, Users } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTrips } from '../contexts/TripContext'
 import Modal from '../components/Modal'
@@ -32,7 +32,7 @@ function tripColor(id) {
 
 export default function TripsPage() {
   const { logout, user } = useAuth()
-  const { trips, loading, error: tripError, createTrip, deleteTrip, setActiveTrip } = useTrips()
+  const { trips, loading, error: tripError, createTrip, deleteTrip, leaveTripForUser, setActiveTrip } = useTrips()
   const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ name: '', destination: '', startDate: '', endDate: '' })
@@ -108,46 +108,55 @@ export default function TripsPage() {
         )}
 
         <div className="space-y-3">
-          {trips.map(trip => (
-            <div
-              key={trip.id}
-              onClick={() => openTrip(trip)}
-              className="card overflow-hidden cursor-pointer hover:shadow-md active:scale-[0.99] transition-all"
-            >
-              {/* Color bar */}
-              <div className={`h-1.5 bg-gradient-to-r ${tripColor(trip.id)}`} />
-              <div className="p-4 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate text-base">{trip.name}</h3>
-                  <div className="flex items-center gap-3 mt-1">
-                    {trip.destination && (
-                      <div className="flex items-center gap-1 text-gray-400 text-xs">
-                        <MapPin size={11} />{trip.destination}
-                      </div>
-                    )}
-                    {(trip.startDate || trip.endDate) && (
-                      <div className="flex items-center gap-1 text-gray-400 text-xs">
-                        <Calendar size={11} />
-                        {fmtDate(trip.startDate)}{trip.endDate ? ` – ${fmtDate(trip.endDate)}` : ''}
-                        {tripDays(trip.startDate, trip.endDate) && (
-                          <span className="text-indigo-400 ml-1">· {tripDays(trip.startDate, trip.endDate)}</span>
-                        )}
-                      </div>
-                    )}
+          {trips.map(trip => {
+            const isJoined = trip.uid !== user?.uid
+            return (
+              <div
+                key={trip.id}
+                onClick={() => openTrip(trip)}
+                className="card overflow-hidden cursor-pointer hover:shadow-md active:scale-[0.99] transition-all"
+              >
+                <div className={`h-1.5 bg-gradient-to-r ${tripColor(trip.id)}`} />
+                <div className="p-4 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900 truncate text-base">{trip.name}</h3>
+                      {isJoined && (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full shrink-0">
+                          <Users size={9} /> Shared
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      {trip.destination && (
+                        <div className="flex items-center gap-1 text-gray-400 text-xs">
+                          <MapPin size={11} />{trip.destination}
+                        </div>
+                      )}
+                      {(trip.startDate || trip.endDate) && (
+                        <div className="flex items-center gap-1 text-gray-400 text-xs">
+                          <Calendar size={11} />
+                          {fmtDate(trip.startDate)}{trip.endDate ? ` – ${fmtDate(trip.endDate)}` : ''}
+                          {tripDays(trip.startDate, trip.endDate) && (
+                            <span className="text-indigo-400 ml-1">· {tripDays(trip.startDate, trip.endDate)}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirmDelete(trip) }}
+                      className="p-2 text-gray-300 hover:text-red-400 rounded-xl transition"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                    <ChevronRight size={16} className="text-gray-300" />
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={e => { e.stopPropagation(); setConfirmDelete(trip) }}
-                    className="p-2 text-gray-300 hover:text-red-400 rounded-xl transition"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                  <ChevronRight size={16} className="text-gray-300" />
-                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </main>
 
@@ -188,22 +197,44 @@ export default function TripsPage() {
         </form>
       </Modal>
 
-      {/* Delete confirm Modal */}
-      <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Delete Trip">
-        <p className="text-gray-600 text-sm mb-5">
-          Delete <strong>{confirmDelete?.name}</strong>? This cannot be undone.
-        </p>
-        <div className="flex gap-3">
-          <button onClick={() => setConfirmDelete(null)}
-            className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-600">
-            Cancel
-          </button>
-          <button
-            onClick={() => { deleteTrip(confirmDelete.id); setConfirmDelete(null) }}
-            className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
-            Delete
-          </button>
-        </div>
+      {/* Delete / Leave confirm Modal */}
+      <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)}
+        title={confirmDelete?.uid !== user?.uid ? 'Leave Trip' : 'Delete Trip'}>
+        {confirmDelete?.uid !== user?.uid ? (
+          <>
+            <p className="text-gray-600 text-sm mb-5">
+              Leave <strong>{confirmDelete?.name}</strong>? You can rejoin via the share link.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-600">
+                Cancel
+              </button>
+              <button
+                onClick={() => { leaveTripForUser(confirmDelete.id); setConfirmDelete(null) }}
+                className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
+                Leave
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-gray-600 text-sm mb-5">
+              Delete <strong>{confirmDelete?.name}</strong>? This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-600">
+                Cancel
+              </button>
+              <button
+                onClick={() => { deleteTrip(confirmDelete.id); setConfirmDelete(null) }}
+                className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
+                Delete
+              </button>
+            </div>
+          </>
+        )}
       </Modal>
     </div>
   )

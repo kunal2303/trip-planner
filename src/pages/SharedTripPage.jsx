@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   CalendarDays, MapPin, Wallet, Package, FileText,
-  Clock, ExternalLink, CheckCircle, Circle,
+  Clock, ExternalLink, CheckCircle, Circle, UserPlus,
 } from 'lucide-react'
-import { getTripByShareToken, getSubCollection } from '../lib/firestore'
+import { getTripByShareToken, getSubCollection, joinTrip } from '../lib/firestore'
+import { useAuth } from '../contexts/AuthContext'
 
 const CAT_EMOJI = { Restaurant: '🍜', Attraction: '🗺', Museum: '🏛', Beach: '🏖', Hotel: '🏨', Bar: '🍸', Shop: '🛒', Park: '🌳', Other: '📍' }
 
-const TABS = [
+const ALL_TABS = [
   { key: 'itinerary', label: 'Plan',     icon: CalendarDays },
   { key: 'expenses',  label: 'Expenses', icon: Wallet },
   { key: 'packing',   label: 'Packing',  icon: Package },
@@ -18,9 +19,12 @@ const TABS = [
 
 export default function SharedTripPage() {
   const { shareToken } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [trip, setTrip] = useState(null)
   const [notFound, setNotFound] = useState(false)
-  const [tab, setTab] = useState('itinerary')
+  const [saving, setSaving] = useState(false)
+  const [tab, setTab] = useState(null)
 
   const [itinerary, setItinerary] = useState([])
   const [expenses, setExpenses] = useState([])
@@ -34,6 +38,8 @@ export default function SharedTripPage() {
       .then(t => {
         if (!t) { setNotFound(true); return }
         setTrip(t)
+        const visibleTabs = getVisibleTabs(t)
+        setTab(visibleTabs[0]?.key || 'itinerary')
       })
       .catch(() => setNotFound(true))
   }, [shareToken])
@@ -50,6 +56,23 @@ export default function SharedTripPage() {
     return () => unsubs.forEach(u => u())
   }, [trip])
 
+  const getVisibleTabs = (t) => {
+    const allowed = t?.sharedSections
+    if (!allowed || allowed.length === 0) return ALL_TABS
+    return ALL_TABS.filter(tab => allowed.includes(tab.key))
+  }
+
+  const handleJoin = async () => {
+    if (!user || saving) return
+    setSaving(true)
+    try {
+      await joinTrip(trip.id, user.uid)
+      navigate(`/trip/${trip.id}/itinerary`)
+    } catch {
+      setSaving(false)
+    }
+  }
+
   if (notFound) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 text-center">
@@ -65,13 +88,15 @@ export default function SharedTripPage() {
     )
   }
 
-  if (!trip) {
+  if (!trip || !tab) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
+
+  const visibleTabs = getVisibleTabs(trip)
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -82,7 +107,26 @@ export default function SharedTripPage() {
             <h1 className="font-bold text-gray-900 truncate leading-tight">{trip.name}</h1>
             {trip.destination && <p className="text-xs text-gray-400 truncate">{trip.destination}</p>}
           </div>
-          <span className="text-xs text-indigo-500 font-medium bg-indigo-50 px-2.5 py-1 rounded-full shrink-0">Read only</span>
+          {user ? (
+            user.uid === trip.uid ? (
+              <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2.5 py-1 rounded-full shrink-0">Your trip</span>
+            ) : trip.members?.includes(user.uid) ? (
+              <button onClick={() => navigate(`/trip/${trip.id}/itinerary`)}
+                className="text-xs font-medium bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full shrink-0">
+                Open trip →
+              </button>
+            ) : (
+              <button onClick={handleJoin} disabled={saving}
+                className="flex items-center gap-1.5 text-xs font-medium bg-indigo-600 text-white px-3 py-1.5 rounded-full shrink-0 disabled:opacity-60">
+                <UserPlus size={12} />
+                {saving ? 'Joining…' : 'Join trip'}
+              </button>
+            )
+          ) : (
+            <a href="/" className="text-xs text-indigo-500 font-medium bg-indigo-50 px-2.5 py-1 rounded-full shrink-0">
+              Sign in to join
+            </a>
+          )}
         </div>
       </header>
 
@@ -98,7 +142,7 @@ export default function SharedTripPage() {
       {/* Bottom nav */}
       <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-100 z-30 safe-bottom">
         <div className="flex max-w-lg mx-auto">
-          {TABS.map(({ key, label, icon: Icon }) => (
+          {visibleTabs.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => { setTab(key); setSelectedNote(null) }}
@@ -114,16 +158,6 @@ export default function SharedTripPage() {
           ))}
         </div>
       </nav>
-
-      {/* CTA */}
-      <div className="fixed bottom-16 inset-x-0 flex justify-center pointer-events-none pb-2 safe-bottom">
-        <a
-          href="/"
-          className="pointer-events-auto text-xs bg-white border border-gray-200 text-gray-500 px-4 py-1.5 rounded-full shadow-sm"
-        >
-          Plan your own trip ✈️
-        </a>
-      </div>
     </div>
   )
 }

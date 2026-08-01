@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from './AuthContext'
+import { joinTrip, leaveTrip } from '../lib/firestore'
 
 const TripContext = createContext(null)
 
@@ -17,31 +18,41 @@ export function TripProvider({ children }) {
 
   useEffect(() => {
     if (!user) { setTrips([]); setLoading(false); return }
-    const q = query(
-      collection(db, 'trips'),
-      where('uid', '==', user.uid),
-    )
-    return onSnapshot(q, snap => {
-      const data = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''))
-      setTrips(data)
+
+    let owned = [], joined = []
+    const merge = () => {
+      const all = [...owned, ...joined]
+      const deduped = [...new Map(all.map(t => [t.id, t])).values()]
+      setTrips(deduped.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')))
       setLoading(false)
-    }, (err) => {
-      console.error('Firestore snapshot error:', err.message)
-      setError(err.message)
-      setLoading(false)
-    })
+    }
+
+    const q1 = query(collection(db, 'trips'), where('uid', '==', user.uid))
+    const q2 = query(collection(db, 'trips'), where('members', 'array-contains', user.uid))
+
+    const u1 = onSnapshot(q1, snap => {
+      owned = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      merge()
+    }, err => { setError(err.message); setLoading(false) })
+
+    const u2 = onSnapshot(q2, snap => {
+      joined = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      merge()
+    }, err => { setError(err.message); setLoading(false) })
+
+    return () => { u1(); u2() }
   }, [user])
 
   const createTrip = (data) =>
-    addDoc(collection(db, 'trips'), { ...data, uid: user.uid, createdAt: serverTimestamp() })
+    addDoc(collection(db, 'trips'), { ...data, uid: user.uid, members: [], createdAt: serverTimestamp() })
 
   const updateTrip = (id, data) => updateDoc(doc(db, 'trips', id), data)
   const deleteTrip = (id) => deleteDoc(doc(db, 'trips', id))
+  const joinTripForUser = (tripId) => joinTrip(tripId, user.uid)
+  const leaveTripForUser = (tripId) => leaveTrip(tripId, user.uid)
 
   return (
-    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, loading, error, createTrip, updateTrip, deleteTrip }}>
+    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, loading, error, createTrip, updateTrip, deleteTrip, joinTripForUser, leaveTripForUser }}>
       {children}
     </TripContext.Provider>
   )

@@ -1,6 +1,6 @@
 import { useParams, useNavigate, NavLink, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, CalendarDays, Ticket, Wallet, Package, MapPin, FileText, Share2, Check } from 'lucide-react'
+import { ArrowLeft, CalendarDays, Ticket, Wallet, Package, MapPin, FileText, Share2, Check, X } from 'lucide-react'
 import { useTrips } from '../contexts/TripContext'
 
 const tabs = [
@@ -12,10 +12,15 @@ const tabs = [
   { to: 'notes',     label: 'Notes',    icon: FileText },
 ]
 
+const ALL_SECTIONS = ['itinerary', 'tickets', 'expenses', 'packing', 'places', 'notes']
+const SECTION_LABELS = { itinerary: 'Plan', tickets: 'Tickets', expenses: 'Expenses', packing: 'Packing', places: 'Places', notes: 'Notes' }
+
 export default function TripLayout() {
   const { tripId } = useParams()
   const navigate = useNavigate()
   const { trips, setActiveTrip, activeTrip, updateTrip } = useTrips()
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [sections, setSections] = useState(ALL_SECTIONS)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -23,16 +28,32 @@ export default function TripLayout() {
     if (trip) setActiveTrip(trip)
   }, [trips, tripId])
 
-  const handleShare = async () => {
+  const openShareModal = () => {
+    setSections(activeTrip?.sharedSections || ALL_SECTIONS)
+    setShowShareModal(true)
+  }
+
+  const toggleSection = (key) => {
+    setSections(prev =>
+      prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key]
+    )
+  }
+
+  const handleCopyLink = async () => {
     let token = activeTrip?.shareToken
-    if (!token || !activeTrip?.isPublic) {
+    if (!token) {
       token = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12)
-      await updateTrip(tripId, { shareToken: token, isPublic: true })
     }
+    await updateTrip(tripId, { shareToken: token, isPublic: true, sharedSections: sections })
     const url = `${window.location.origin}/s/${token}`
     await navigator.clipboard.writeText(url)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setTimeout(() => { setCopied(false); setShowShareModal(false) }, 1500)
+  }
+
+  const handleStopSharing = async () => {
+    await updateTrip(tripId, { isPublic: false })
+    setShowShareModal(false)
   }
 
   return (
@@ -53,11 +74,10 @@ export default function TripLayout() {
             )}
           </div>
           <button
-            onClick={handleShare}
+            onClick={openShareModal}
             className="p-1.5 rounded-xl text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition"
-            title="Copy share link"
           >
-            {copied ? <Check size={18} className="text-green-500" /> : <Share2 size={18} />}
+            <Share2 size={18} />
           </button>
         </div>
       </header>
@@ -92,6 +112,56 @@ export default function TripLayout() {
           ))}
         </div>
       </nav>
+
+      {/* Share modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-6">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900">Share trip</h3>
+              <button onClick={() => setShowShareModal(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-xl">
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-400 mb-3">Choose which sections to include</p>
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              {ALL_SECTIONS.map(key => (
+                <button
+                  key={key}
+                  onClick={() => toggleSection(key)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-sm font-medium transition ${
+                    sections.includes(key)
+                      ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-400'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    sections.includes(key) ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'
+                  }`}>
+                    {sections.includes(key) && <Check size={10} className="text-white" />}
+                  </div>
+                  {SECTION_LABELS[key]}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleCopyLink}
+              disabled={sections.length === 0}
+              className="w-full bg-indigo-600 text-white py-3 rounded-2xl font-semibold text-sm disabled:opacity-40 transition flex items-center justify-center gap-2"
+            >
+              {copied ? <><Check size={16} /> Link copied!</> : <><Share2 size={16} /> Copy share link</>}
+            </button>
+
+            {activeTrip?.isPublic && (
+              <button onClick={handleStopSharing} className="w-full mt-2 py-2.5 text-sm text-red-400 font-medium">
+                Stop sharing
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

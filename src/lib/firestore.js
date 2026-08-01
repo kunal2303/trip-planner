@@ -1,6 +1,7 @@
 import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, serverTimestamp, getDocs, limit,
+  arrayUnion, arrayRemove,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -76,3 +77,18 @@ export function getSubCollection(tripId, sub, cb) {
   const q = query(collection(db, 'trips', tripId, sub), orderBy('createdAt', 'asc'))
   return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
 }
+
+export async function copyTripData(fromTripId, toTripId, sections) {
+  for (const sub of sections) {
+    const snap = await getDocs(query(collection(db, 'trips', fromTripId, sub), orderBy('createdAt', 'asc')))
+    await Promise.all(snap.docs.map(d =>
+      addDoc(collection(db, 'trips', toTripId, sub), { ...d.data(), createdAt: serverTimestamp() })
+    ))
+  }
+}
+
+export const joinTrip = (tripId, uid) =>
+  updateDoc(doc(db, 'trips', tripId), { members: arrayUnion(uid) })
+
+export const leaveTrip = (tripId, uid) =>
+  updateDoc(doc(db, 'trips', tripId), { members: arrayRemove(uid) })
