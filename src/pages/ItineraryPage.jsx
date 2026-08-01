@@ -21,15 +21,7 @@ function parseCoords(url) {
 
 async function resolveCoords(mapsUrl) {
   if (!mapsUrl) return null
-  const direct = parseCoords(mapsUrl)
-  if (direct) return direct
-  try {
-    const res = await fetch(`/api/resolve-coords?url=${encodeURIComponent(mapsUrl)}`)
-    if (!res.ok) return null
-    const data = await res.json()
-    if (data.lat && data.lng) return { lat: data.lat, lng: data.lng }
-  } catch {}
-  return null
+  return parseCoords(mapsUrl)
 }
 
 async function fetchDrivingDistance(from, to) {
@@ -55,25 +47,22 @@ function DirectionsChip({ from, to }) {
   const [dist, setDist] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  const fromC = (from?.lat && from?.lng) ? { lat: from.lat, lng: from.lng } : parseCoords(from?.mapsUrl)
+  const toC = (to?.lat && to?.lng) ? { lat: to.lat, lng: to.lng } : parseCoords(to?.mapsUrl)
+  const hasCoords = !!(fromC && toC)
   const hasRef = !!(from?.mapsUrl || from?.location) && !!(to?.mapsUrl || to?.location)
 
   useEffect(() => {
-    if (!hasRef) return
+    if (!hasCoords) return
     setLoading(true)
-    Promise.all([
-      (from?.lat && from?.lng) ? Promise.resolve({ lat: from.lat, lng: from.lng }) : resolveCoords(from?.mapsUrl),
-      (to?.lat && to?.lng) ? Promise.resolve({ lat: to.lat, lng: to.lng }) : resolveCoords(to?.mapsUrl),
-    ]).then(([fromC, toC]) => {
-      if (fromC && toC) return fetchDrivingDistance(fromC, toC)
-      return null
-    }).then(d => setDist(d)).finally(() => setLoading(false))
-  }, [from?.mapsUrl, from?.lat, to?.mapsUrl, to?.lat])
+    fetchDrivingDistance(fromC, toC)
+      .then(d => setDist(d))
+      .finally(() => setLoading(false))
+  }, [fromC?.lat, fromC?.lng, toC?.lat, toC?.lng])
 
   if (!hasRef) return null
 
-  const fromC = (from?.lat && from?.lng) ? { lat: from.lat, lng: from.lng } : null
-  const toC = (to?.lat && to?.lng) ? { lat: to.lat, lng: to.lng } : null
-  const directionsUrl = (fromC && toC)
+  const directionsUrl = hasCoords
     ? `https://www.google.com/maps/dir/?api=1&origin=${fromC.lat},${fromC.lng}&destination=${toC.lat},${toC.lng}`
     : from?.location && to?.location
       ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(from.location)}&destination=${encodeURIComponent(to.location)}`
@@ -301,8 +290,15 @@ export default function ItineraryPage() {
 
           <input placeholder="Location" value={form.location}
             onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="field" />
-          <input placeholder="Maps URL" value={form.mapsUrl}
-            onChange={e => setForm(f => ({ ...f, mapsUrl: e.target.value }))} className="field" />
+          <div>
+            <input placeholder="Maps URL" value={form.mapsUrl}
+              onChange={e => setForm(f => ({ ...f, mapsUrl: e.target.value }))} className="field" />
+            {form.mapsUrl && !parseCoords(form.mapsUrl) && (
+              <p className="text-xs text-amber-500 mt-1 px-1">
+                Short URLs can't show distance. In Google Maps, tap <strong>Share → Copy link</strong> and use the long URL starting with <em>google.com/maps</em>.
+              </p>
+            )}
+          </div>
           <textarea placeholder="Notes" value={form.notes}
             onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} className="field resize-none" />
           <button type="submit" className="btn-primary">{editingItem ? 'Save Changes' : 'Add Activity'}</button>

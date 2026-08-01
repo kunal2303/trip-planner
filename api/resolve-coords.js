@@ -6,34 +6,25 @@ export default async function handler(req, res) {
   if (!url) return res.status(400).json({ error: 'missing url' })
 
   try {
+    // Only follow the redirect chain to get the final URL — don't fetch the body
+    // This avoids Google detecting datacenter IPs via full page fetch
     const response = await fetch(url, {
+      method: 'HEAD',
       redirect: 'follow',
       headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15' },
     })
-    const text = await response.text()
     const finalUrl = response.url
 
-    // @lat,lng in final URL
+    // Try @lat,lng in final URL
     let m = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-    if (m) return res.json({ lat: parseFloat(m[1]), lng: parseFloat(m[2]), src: 'url' })
+    if (m) return res.json({ lat: parseFloat(m[1]), lng: parseFloat(m[2]), src: 'url-at' })
 
-    // !3d<lat>!4d<lng> in page text (most reliable)
-    m = text.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
-    if (m) return res.json({ lat: parseFloat(m[1]), lng: parseFloat(m[2]), src: '3d4d' })
+    // !3d<lat>!4d<lng>
+    m = finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+    if (m) return res.json({ lat: parseFloat(m[1]), lng: parseFloat(m[2]), src: 'url-3d' })
 
-    // APP_INITIALIZATION_STATE: big_number,lng,lat
-    // Must be 2-3 digit lng and 1-2 digit lat (world coords)
-    const allMatches = [...text.matchAll(/\d+\.\d+,(-?\d{1,3}\.\d{5,}),(-?\d{1,2}\.\d{5,})/g)]
-    // Find the match where values are plausible world coordinates
-    for (const match of allMatches) {
-      const lng = parseFloat(match[1])
-      const lat = parseFloat(match[2])
-      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 && !(lat === 0 && lng === 0)) {
-        return res.json({ lat, lng, src: 'init' })
-      }
-    }
-
-    return res.status(404).json({ error: 'coords not found', finalUrl, snippet: text.slice(0, 200) })
+    // Return the final URL so the client can try to parse it
+    return res.status(404).json({ error: 'coords not found in redirect url', finalUrl })
   } catch (e) {
     return res.status(500).json({ error: e.message })
   }
