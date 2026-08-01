@@ -6,8 +6,7 @@ export default async function handler(req, res) {
   if (!url) return res.status(400).json({ error: 'missing url' })
 
   try {
-    // Only follow the redirect chain to get the final URL — don't fetch the body
-    // This avoids Google detecting datacenter IPs via full page fetch
+    // Follow redirects (HEAD only — avoids Google serving datacenter content)
     const response = await fetch(url, {
       method: 'HEAD',
       redirect: 'follow',
@@ -17,14 +16,27 @@ export default async function handler(req, res) {
 
     // Try @lat,lng in final URL
     let m = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-    if (m) return res.json({ lat: parseFloat(m[1]), lng: parseFloat(m[2]), src: 'url-at' })
+    if (m) return res.json({ lat: parseFloat(m[1]), lng: parseFloat(m[2]) })
 
-    // !3d<lat>!4d<lng>
+    // Try !3d<lat>!4d<lng>
     m = finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
-    if (m) return res.json({ lat: parseFloat(m[1]), lng: parseFloat(m[2]), src: 'url-3d' })
+    if (m) return res.json({ lat: parseFloat(m[1]), lng: parseFloat(m[2]) })
 
-    // Return the final URL so the client can try to parse it
-    return res.status(404).json({ error: 'coords not found in redirect url', finalUrl })
+    // Extract place name from /maps/place/<name>/
+    const placeMatch = finalUrl.match(/\/maps\/place\/([^/?]+)/)
+    if (placeMatch) {
+      const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '))
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1`,
+        { headers: { 'User-Agent': 'TripPlanner/1.0 (trip-planner-seven-orpin.vercel.app)' } }
+      )
+      const geoData = await geoRes.json()
+      if (geoData[0]) {
+        return res.json({ lat: parseFloat(geoData[0].lat), lng: parseFloat(geoData[0].lon) })
+      }
+    }
+
+    return res.status(404).json({ error: 'coords not found', finalUrl })
   } catch (e) {
     return res.status(500).json({ error: e.message })
   }
