@@ -1,22 +1,34 @@
 import { useState, useEffect } from 'react'
 import { useParams, useOutletContext } from 'react-router-dom'
-import { Plus, Trash2, Clock, MapPin, Pencil, ExternalLink, Navigation } from 'lucide-react'
+import { Plus, Trash2, Clock, MapPin, Pencil, ExternalLink, Navigation, ChevronDown, ChevronUp } from 'lucide-react'
 import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
 
-const EMPTY = { date: '', time: '', title: '', location: '', mapsUrl: '', notes: '' }
+const EMPTY = { date: '', time: '', title: '', location: '', mapsUrl: '', lat: null, lng: null, notes: '' }
 
-function parseCoords(mapsUrl) {
+function parseCoords(url) {
+  if (!url) return null
+  let m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
+  m = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/)
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
+  m = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/)
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
+  m = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
+  return null
+}
+
+async function resolveCoords(mapsUrl) {
   if (!mapsUrl) return null
-  // @lat,lng,zoom or @lat,lng
-  let m = mapsUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
-  // ?q=lat,lng
-  m = mapsUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/)
-  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
-  // /place/.../@lat,lng or ll=lat,lng
-  m = mapsUrl.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/)
-  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
+  const direct = parseCoords(mapsUrl)
+  if (direct) return direct
+  try {
+    const res = await fetch(`/api/resolve-coords?url=${encodeURIComponent(mapsUrl)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.lat && data.lng) return { lat: data.lat, lng: data.lng }
+  } catch {}
   return null
 }
 
@@ -43,27 +55,32 @@ function DirectionsChip({ from, to }) {
   const [dist, setDist] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  const fromC = parseCoords(from?.mapsUrl)
-  const toC = parseCoords(to?.mapsUrl)
-  const hasCoords = fromC && toC
-  const hasLocations = from?.location && to?.location
+  const hasRef = !!(from?.mapsUrl || from?.location) && !!(to?.mapsUrl || to?.location)
 
   useEffect(() => {
-    if (!hasCoords) return
+    if (!hasRef) return
     setLoading(true)
-    fetchDrivingDistance(fromC, toC)
-      .then(d => setDist(d))
-      .finally(() => setLoading(false))
-  }, [from?.mapsUrl, to?.mapsUrl])
+    Promise.all([
+      (from?.lat && from?.lng) ? Promise.resolve({ lat: from.lat, lng: from.lng }) : resolveCoords(from?.mapsUrl),
+      (to?.lat && to?.lng) ? Promise.resolve({ lat: to.lat, lng: to.lng }) : resolveCoords(to?.mapsUrl),
+    ]).then(([fromC, toC]) => {
+      if (fromC && toC) return fetchDrivingDistance(fromC, toC)
+      return null
+    }).then(d => setDist(d)).finally(() => setLoading(false))
+  }, [from?.mapsUrl, from?.lat, to?.mapsUrl, to?.lat])
 
-  if (!hasCoords && !hasLocations) return null
+  if (!hasRef) return null
 
-  const directionsUrl = hasCoords
+  const fromC = (from?.lat && from?.lng) ? { lat: from.lat, lng: from.lng } : null
+  const toC = (to?.lat && to?.lng) ? { lat: to.lat, lng: to.lng } : null
+  const directionsUrl = (fromC && toC)
     ? `https://www.google.com/maps/dir/?api=1&origin=${fromC.lat},${fromC.lng}&destination=${toC.lat},${toC.lng}`
-    : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(from.location)}&destination=${encodeURIComponent(to.location)}`
+    : from?.location && to?.location
+      ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(from.location)}&destination=${encodeURIComponent(to.location)}`
+      : to?.mapsUrl || '#'
 
   return (
-    <div className="flex items-center gap-2 py-1 pl-1">
+    <div className="flex items-center gap-2 py-1.5 pl-1">
       <a href={directionsUrl} target="_blank" rel="noreferrer"
         className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-indigo-500 transition">
         <Navigation size={11} className="shrink-0" />
@@ -82,6 +99,7 @@ export default function ItineraryPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [form, setForm] = useState(EMPTY)
+  const [openDay, setOpenDay] = useState(null)
 
   useEffect(() => subscribeSub(tripId, 'itinerary', canEdit ? setItems : () => {}), [tripId, canEdit])
   useEffect(() => subscribeSub(tripId, 'places', setPlaces), [tripId])
@@ -93,6 +111,21 @@ export default function ItineraryPage() {
   }, {})
   const days = Object.keys(byDay).sort()
 
+  useEffect(() => {
+    if (days.length > 0 && openDay === null) setOpenDay(days[0])
+  }, [days.length])
+
+  const startDate = days.find(d => d !== 'No date')
+  const getDayLabel = (dateStr) => {
+    if (dateStr === 'No date' || !startDate) return null
+    const start = new Date(startDate + 'T00:00:00')
+    const current = new Date(dateStr + 'T00:00:00')
+    const diff = Math.round((current - start) / 86400000)
+    return diff >= 0 ? `Day ${diff + 1}` : null
+  }
+
+  const toggleCollapsed = (day) => setOpenDay(prev => prev === day ? null : day)
+
   const openAdd = () => { setEditingItem(null); setForm(EMPTY); setShowModal(true) }
   const openEdit = (item) => {
     setEditingItem(item)
@@ -102,10 +135,12 @@ export default function ItineraryPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const coords = await resolveCoords(form.mapsUrl)
+    const data = { ...form, lat: coords?.lat || null, lng: coords?.lng || null }
     if (editingItem) {
-      await updateItem(tripId, 'itinerary', editingItem.id, form)
+      await updateItem(tripId, 'itinerary', editingItem.id, data)
     } else {
-      await addItem(tripId, 'itinerary', form)
+      await addItem(tripId, 'itinerary', data)
     }
     setShowModal(false)
     setForm(EMPTY)
@@ -137,69 +172,93 @@ export default function ItineraryPage() {
         </div>
       )}
 
-      <div className="space-y-6">
-        {days.map(day => (
-          <div key={day}>
-            <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">
-              {day !== 'No date'
-                ? new Date(day + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
-                : 'No date'}
-            </p>
-            <div className="relative pl-5">
-              <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
-              <div className="space-y-3">
-                {byDay[day].map((item, idx) => (
-                  <div key={item.id}>
-                    <div className="relative">
-                      <div className="absolute -left-5 top-3 w-3 h-3 rounded-full bg-white border-2 border-indigo-400" />
-                      <div className="card p-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
-                            <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                              {item.time && (
-                                <span className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
-                                  <Clock size={11} />{item.time}
-                                </span>
-                              )}
-                              {item.location && (
-                                <span className="flex items-center gap-1 text-xs text-gray-400">
-                                  <MapPin size={11} />{item.location}
-                                </span>
-                              )}
+      <div className="space-y-4">
+        {days.map(day => {
+          const isCollapsed = openDay !== day
+          const dayLabel = getDayLabel(day)
+          const dateLabel = day !== 'No date'
+            ? new Date(day + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+            : 'No date'
+          return (
+            <div key={day}>
+              <button
+                onClick={() => toggleCollapsed(day)}
+                className="w-full flex items-center justify-between mb-3 group"
+              >
+                <div className="flex items-center gap-2">
+                  {dayLabel && (
+                    <span className="text-xs font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                      {dayLabel}
+                    </span>
+                  )}
+                  <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">
+                    {dateLabel}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-gray-400">
+                  <span className="text-xs">{byDay[day].length} {byDay[day].length === 1 ? 'activity' : 'activities'}</span>
+                  {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                </div>
+              </button>
+
+              {!isCollapsed && (
+                <div className="relative pl-5">
+                  <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
+                  <div className="space-y-3">
+                    {byDay[day].map((item, idx) => (
+                      <div key={item.id}>
+                        <div className="relative">
+                          <div className="absolute -left-5 top-3 w-3 h-3 rounded-full bg-white border-2 border-indigo-400" />
+                          <div className="card p-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
+                                <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                                  {item.time && (
+                                    <span className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
+                                      <Clock size={11} />{item.time}
+                                    </span>
+                                  )}
+                                  {item.location && (
+                                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                                      <MapPin size={11} />{item.location}
+                                    </span>
+                                  )}
+                                </div>
+                                {item.mapsUrl && (
+                                  <a href={item.mapsUrl} target="_blank" rel="noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs text-indigo-500 font-medium mt-1.5">
+                                    <ExternalLink size={11} /> View on Maps
+                                  </a>
+                                )}
+                                {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {canEdit && (<>
+                                  <button onClick={() => openEdit(item)}
+                                    className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
+                                    className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
+                                    <Trash2 size={14} />
+                                  </button>
+                                </>)}
+                              </div>
                             </div>
-                            {item.mapsUrl && (
-                              <a href={item.mapsUrl} target="_blank" rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-indigo-500 font-medium mt-1.5">
-                                <ExternalLink size={11} /> View on Maps
-                              </a>
-                            )}
-                            {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {canEdit && (<>
-                              <button onClick={() => openEdit(item)}
-                                className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
-                                <Pencil size={14} />
-                              </button>
-                              <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
-                                className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
-                                <Trash2 size={14} />
-                              </button>
-                            </>)}
                           </div>
                         </div>
+                        {idx < byDay[day].length - 1 && (
+                          <DirectionsChip from={item} to={byDay[day][idx + 1]} />
+                        )}
                       </div>
-                    </div>
-                    {idx < byDay[day].length - 1 && (
-                      <DirectionsChip from={item} to={byDay[day][idx + 1]} />
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <Modal open={showModal} onClose={() => { setShowModal(false); setEditingItem(null) }} title={editingItem ? 'Edit Activity' : 'Add Activity'}>
