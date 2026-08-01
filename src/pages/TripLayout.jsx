@@ -31,7 +31,7 @@ export default function TripLayout() {
   }, [trips, tripId])
 
   const isOwner = activeTrip?.uid === user?.uid
-  const sharedSections = activeTrip?.sharedSections || ALL_SECTIONS
+  const sharedSections = (activeTrip?.sharedSections?.length > 0) ? activeTrip.sharedSections : ALL_SECTIONS
   const visibleTabs = isOwner
     ? ALL_TABS
     : ALL_TABS.filter(t => sharedSections.includes(t.to))

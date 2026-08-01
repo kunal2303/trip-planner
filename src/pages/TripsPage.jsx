@@ -145,12 +145,21 @@ export default function TripsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button
-                      onClick={e => { e.stopPropagation(); setConfirmDelete(trip) }}
-                      className="p-2 text-gray-300 hover:text-red-400 rounded-xl transition"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    {isJoined ? (
+                      <button
+                        onClick={e => { e.stopPropagation(); setConfirmDelete(trip) }}
+                        className="p-2 text-gray-300 hover:text-red-400 rounded-xl transition"
+                      >
+                        <LogOut size={15} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={e => { e.stopPropagation(); setConfirmDelete(trip) }}
+                        className="p-2 text-gray-300 hover:text-red-400 rounded-xl transition"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
                     <ChevronRight size={16} className="text-gray-300" />
                   </div>
                 </div>

@@ -59,7 +59,7 @@ export default function SharedTripPage() {
   const getVisibleTabs = (t) => {
     const allowed = t?.sharedSections
     if (!allowed || allowed.length === 0) return ALL_TABS
-    return ALL_TABS.filter(tab => allowed.includes(tab.key))
+    return ALL_TABS.filter(t => allowed.includes(t.key))
   }
 
   const [joinError, setJoinError] = useState('')
