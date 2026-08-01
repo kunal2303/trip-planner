@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useParams, useOutletContext } from 'react-router-dom'
-import { Plus, Trash2, Clock, MapPin, Pencil, ExternalLink, Navigation, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, Clock, MapPin, Pencil, ExternalLink, Navigation, ChevronDown, ChevronUp, GripVertical } from 'lucide-react'
 import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor,
+  useSensor, useSensors, DragOverlay,
+} from '@dnd-kit/core'
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 const EMPTY = { date: '', time: '', title: '', location: '', mapsUrl: '', lat: null, lng: null, notes: '' }
 
@@ -90,6 +98,16 @@ function DirectionsChip({ from, to }) {
   )
 }
 
+function SortableItem({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? 'opacity-50' : ''}>
+      {children({ dragHandleProps: { ...attributes, ...listeners } })}
+    </div>
+  )
+}
+
 export default function ItineraryPage() {
   const { tripId } = useParams()
   const { isOwner, sharedSections } = useOutletContext() || {}
@@ -100,6 +118,12 @@ export default function ItineraryPage() {
   const [editingItem, setEditingItem] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [openDay, setOpenDay] = useState(null)
+  const [activeId, setActiveId] = useState(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  )
 
   useEffect(() => subscribeSub(tripId, 'itinerary', canEdit ? setItems : () => {}), [tripId, canEdit])
   useEffect(() => subscribeSub(tripId, 'places', setPlaces), [tripId])
@@ -109,7 +133,31 @@ export default function ItineraryPage() {
     ;(acc[day] = acc[day] || []).push(item)
     return acc
   }, {})
+  // Sort each day's items by explicit order, falling back to createdAt
+  Object.keys(byDay).forEach(day => {
+    byDay[day].sort((a, b) => {
+      if (a.order != null && b.order != null) return a.order - b.order
+      if (a.order != null) return -1
+      if (b.order != null) return 1
+      return 0
+    })
+  })
   const days = Object.keys(byDay).sort()
+
+  const handleDragEnd = ({ active, over }) => {
+    setActiveId(null)
+    if (!over || active.id === over.id) return
+    // Find which day this drag happened in
+    for (const day of days) {
+      const dayItems = byDay[day]
+      const oldIndex = dayItems.findIndex(i => i.id === active.id)
+      const newIndex = dayItems.findIndex(i => i.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) continue
+      const reordered = arrayMove(dayItems, oldIndex, newIndex)
+      reordered.forEach((item, idx) => updateItem(tripId, 'itinerary', item.id, { order: idx }))
+      break
+    }
+  }
 
   useEffect(() => {
     if (days.length > 0 && openDay === null) setOpenDay(days[0])
@@ -204,56 +252,74 @@ export default function ItineraryPage() {
               {!isCollapsed && (
                 <div className="relative pl-5">
                   <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
-                  <div className="space-y-3">
-                    {byDay[day].map((item, idx) => (
-                      <div key={item.id}>
-                        <div className="relative">
-                          <div className="absolute -left-5 top-3 w-3 h-3 rounded-full bg-white border-2 border-indigo-400" />
-                          <div className="card p-4">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
-                                <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                                  {item.time && (
-                                    <span className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
-                                      <Clock size={11} />{item.time}
-                                    </span>
-                                  )}
-                                  {item.location && (
-                                    <span className="flex items-center gap-1 text-xs text-gray-400">
-                                      <MapPin size={11} />{item.location}
-                                    </span>
-                                  )}
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={({ active }) => setActiveId(active.id)}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext items={byDay[day].map(i => i.id)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-3">
+                        {byDay[day].map((item, idx) => (
+                          <SortableItem key={item.id} id={item.id}>
+                            {({ dragHandleProps }) => (
+                              <div>
+                                <div className="relative">
+                                  <div className="absolute -left-5 top-3 w-3 h-3 rounded-full bg-white border-2 border-indigo-400" />
+                                  <div className="card p-4">
+                                    <div className="flex items-start justify-between gap-2">
+                                      {canEdit && (
+                                        <button {...dragHandleProps} className="mt-0.5 p-0.5 text-gray-300 hover:text-gray-400 cursor-grab active:cursor-grabbing touch-none shrink-0">
+                                          <GripVertical size={14} />
+                                        </button>
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
+                                        <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                                          {item.time && (
+                                            <span className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
+                                              <Clock size={11} />{item.time}
+                                            </span>
+                                          )}
+                                          {item.location && (
+                                            <span className="flex items-center gap-1 text-xs text-gray-400">
+                                              <MapPin size={11} />{item.location}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {item.mapsUrl && (
+                                          <a href={item.mapsUrl} target="_blank" rel="noreferrer"
+                                            className="inline-flex items-center gap-1 text-xs text-indigo-500 font-medium mt-1.5">
+                                            <ExternalLink size={11} /> View on Maps
+                                          </a>
+                                        )}
+                                        {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {canEdit && (<>
+                                          <button onClick={() => openEdit(item)}
+                                            className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
+                                            <Pencil size={14} />
+                                          </button>
+                                          <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
+                                            className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </>)}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                                {item.mapsUrl && (
-                                  <a href={item.mapsUrl} target="_blank" rel="noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs text-indigo-500 font-medium mt-1.5">
-                                    <ExternalLink size={11} /> View on Maps
-                                  </a>
+                                {idx < byDay[day].length - 1 && (
+                                  <DirectionsChip from={item} to={byDay[day][idx + 1]} />
                                 )}
-                                {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
                               </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {canEdit && (<>
-                                  <button onClick={() => openEdit(item)}
-                                    className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
-                                    <Pencil size={14} />
-                                  </button>
-                                  <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
-                                    className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
-                                    <Trash2 size={14} />
-                                  </button>
-                                </>)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {idx < byDay[day].length - 1 && (
-                          <DirectionsChip from={item} to={byDay[day][idx + 1]} />
-                        )}
+                            )}
+                          </SortableItem>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
                 </div>
               )}
             </div>
