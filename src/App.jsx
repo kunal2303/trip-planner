@@ -24,8 +24,8 @@ function OfflineBanner() {
   }, [])
   if (!offline) return null
   return (
-    <div className="fixed top-0 inset-x-0 z-50 bg-amber-400 text-amber-900 text-xs font-medium text-center py-1.5 px-4">
-      You're offline
+    <div className="sticky top-0 inset-x-0 z-50 bg-amber-400 text-amber-900 text-xs font-medium text-center py-1.5 px-4">
+      You're offline — changes will sync when you reconnect
     </div>
   )
 }
