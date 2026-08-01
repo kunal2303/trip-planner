@@ -1,10 +1,77 @@
 import { useState, useEffect } from 'react'
 import { useParams, useOutletContext } from 'react-router-dom'
-import { Plus, Trash2, Clock, MapPin, Pencil, ExternalLink } from 'lucide-react'
+import { Plus, Trash2, Clock, MapPin, Pencil, ExternalLink, Navigation } from 'lucide-react'
 import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
 
 const EMPTY = { date: '', time: '', title: '', location: '', mapsUrl: '', notes: '' }
+
+function parseCoords(mapsUrl) {
+  if (!mapsUrl) return null
+  // @lat,lng,zoom or @lat,lng
+  let m = mapsUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
+  // ?q=lat,lng
+  m = mapsUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/)
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
+  // /place/.../@lat,lng or ll=lat,lng
+  m = mapsUrl.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/)
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) }
+  return null
+}
+
+async function fetchDrivingDistance(from, to) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`
+  const res = await fetch(url)
+  if (!res.ok) return null
+  const data = await res.json()
+  const route = data.routes?.[0]
+  if (!route) return null
+  const meters = route.distance
+  const seconds = route.duration
+  const dist = meters >= 1000
+    ? `${(meters / 1000).toFixed(1)} km`
+    : `${Math.round(meters)} m`
+  const mins = Math.round(seconds / 60)
+  const time = mins >= 60
+    ? `${Math.floor(mins / 60)}h ${mins % 60}m`
+    : `${mins} min`
+  return `${dist} · ${time}`
+}
+
+function DirectionsChip({ from, to }) {
+  const [dist, setDist] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const fromC = parseCoords(from?.mapsUrl)
+  const toC = parseCoords(to?.mapsUrl)
+  const hasCoords = fromC && toC
+  const hasLocations = from?.location && to?.location
+
+  useEffect(() => {
+    if (!hasCoords) return
+    setLoading(true)
+    fetchDrivingDistance(fromC, toC)
+      .then(d => setDist(d))
+      .finally(() => setLoading(false))
+  }, [from?.mapsUrl, to?.mapsUrl])
+
+  if (!hasCoords && !hasLocations) return null
+
+  const directionsUrl = hasCoords
+    ? `https://www.google.com/maps/dir/?api=1&origin=${fromC.lat},${fromC.lng}&destination=${toC.lat},${toC.lng}`
+    : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(from.location)}&destination=${encodeURIComponent(to.location)}`
+
+  return (
+    <div className="flex items-center gap-2 py-1 pl-1">
+      <a href={directionsUrl} target="_blank" rel="noreferrer"
+        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-indigo-500 transition">
+        <Navigation size={11} className="shrink-0" />
+        {loading ? '…' : dist || 'Directions →'}
+      </a>
+    </div>
+  )
+}
 
 export default function ItineraryPage() {
   const { tripId } = useParams()
@@ -81,47 +148,52 @@ export default function ItineraryPage() {
             <div className="relative pl-5">
               <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
               <div className="space-y-3">
-                {byDay[day].map((item) => (
-                  <div key={item.id} className="relative">
-                    <div className="absolute -left-5 top-3 w-3 h-3 rounded-full bg-white border-2 border-indigo-400" />
-                    <div className="card p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
-                          <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                            {item.time && (
-                              <span className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
-                                <Clock size={11} />{item.time}
-                              </span>
+                {byDay[day].map((item, idx) => (
+                  <div key={item.id}>
+                    <div className="relative">
+                      <div className="absolute -left-5 top-3 w-3 h-3 rounded-full bg-white border-2 border-indigo-400" />
+                      <div className="card p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
+                            <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                              {item.time && (
+                                <span className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
+                                  <Clock size={11} />{item.time}
+                                </span>
+                              )}
+                              {item.location && (
+                                <span className="flex items-center gap-1 text-xs text-gray-400">
+                                  <MapPin size={11} />{item.location}
+                                </span>
+                              )}
+                            </div>
+                            {item.mapsUrl && (
+                              <a href={item.mapsUrl} target="_blank" rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-indigo-500 font-medium mt-1.5">
+                                <ExternalLink size={11} /> View on Maps
+                              </a>
                             )}
-                            {item.location && (
-                              <span className="flex items-center gap-1 text-xs text-gray-400">
-                                <MapPin size={11} />{item.location}
-                              </span>
-                            )}
+                            {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
                           </div>
-                          {item.mapsUrl && (
-                            <a href={item.mapsUrl} target="_blank" rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-indigo-500 font-medium mt-1.5">
-                              <ExternalLink size={11} /> View on Maps
-                            </a>
-                          )}
-                          {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {canEdit && (<>
-                            <button onClick={() => openEdit(item)}
-                              className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
-                              <Pencil size={14} />
-                            </button>
-                            <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
-                              className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
-                              <Trash2 size={14} />
-                            </button>
-                          </>)}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {canEdit && (<>
+                              <button onClick={() => openEdit(item)}
+                                className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
+                                <Pencil size={14} />
+                              </button>
+                              <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
+                                className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
+                                <Trash2 size={14} />
+                              </button>
+                            </>)}
+                          </div>
                         </div>
                       </div>
                     </div>
+                    {idx < byDay[day].length - 1 && (
+                      <DirectionsChip from={item} to={byDay[day][idx + 1]} />
+                    )}
                   </div>
                 ))}
               </div>
