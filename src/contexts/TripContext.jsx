@@ -31,6 +31,7 @@ export function TripProvider({ children }) {
     const q2 = query(collection(db, 'trips'), where('members', 'array-contains', user.uid))
 
     const u1 = onSnapshot(q1, snap => {
+      console.log('owned trips snap:', snap.docs.length, 'uid:', user.uid)
       owned = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       merge()
     }, err => { console.error('owned query error:', err.message); setError(err.message); setLoading(false) })
