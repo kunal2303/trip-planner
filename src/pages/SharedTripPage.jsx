@@ -62,13 +62,18 @@ export default function SharedTripPage() {
     return ALL_TABS.filter(tab => allowed.includes(tab.key))
   }
 
+  const [joinError, setJoinError] = useState('')
+
   const handleJoin = async () => {
     if (!user || saving) return
     setSaving(true)
+    setJoinError('')
     try {
       await joinTrip(trip.id, user.uid)
       navigate(`/trip/${trip.id}/itinerary`)
-    } catch {
+    } catch (e) {
+      console.error('joinTrip error:', e)
+      setJoinError(e.message || 'Failed to join')
       setSaving(false)
     }
   }
@@ -131,6 +136,11 @@ export default function SharedTripPage() {
       </header>
 
       {/* Content */}
+      {joinError && (
+        <div className="max-w-lg mx-auto px-4 pt-3">
+          <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{joinError}</p>
+        </div>
+      )}
       <main className="flex-1 max-w-lg w-full mx-auto px-4 py-4 pb-nav overflow-y-auto">
         {tab === 'itinerary' && <SharedItinerary items={itinerary} />}
         {tab === 'expenses'  && <SharedExpenses  items={expenses} />}
