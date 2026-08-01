@@ -33,12 +33,16 @@ export function TripProvider({ children }) {
     const u1 = onSnapshot(q1, snap => {
       owned = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       merge()
-    }, err => { setError(err.message); setLoading(false) })
+    }, err => { console.error('owned query error:', err.message); setError(err.message); setLoading(false) })
 
     const u2 = onSnapshot(q2, snap => {
       joined = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       merge()
-    }, err => { setError(err.message); setLoading(false) })
+    }, err => {
+      // members query can fail if no docs have a members field yet — treat as empty
+      console.warn('members query error (non-fatal):', err.message)
+      merge()
+    })
 
     return () => { u1(); u2() }
   }, [user])
