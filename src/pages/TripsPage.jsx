@@ -4,6 +4,8 @@ import { Plus, MapPin, Calendar, Trash2, LogOut, ChevronRight, Users } from 'luc
 import { useAuth } from '../contexts/AuthContext'
 import { useTrips } from '../contexts/TripContext'
 import Modal from '../components/Modal'
+import { doc, deleteDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 
 function fmtDate(d) {
   if (!d) return ''
@@ -221,12 +223,11 @@ export default function TripsPage() {
               </button>
               <button
                 onClick={async () => {
-                  console.log('leaving trip:', JSON.stringify(confirmDelete))
                   try {
-                    await deleteTrip(confirmDelete.id)
+                    await deleteDoc(doc(db, 'trips', confirmDelete.id))
                     setConfirmDelete(null)
                   } catch (err) {
-                    alert('Leave failed: ' + err.message + ' | trip uid: ' + confirmDelete.uid + ' | user: ' + user.uid)
+                    alert('Leave failed: ' + err.message + ' | trip id: ' + confirmDelete.id + ' | trip uid: ' + confirmDelete.uid + ' | user: ' + user.uid + ' | originTripId: ' + confirmDelete.originTripId)
                   }
                 }}
                 className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
