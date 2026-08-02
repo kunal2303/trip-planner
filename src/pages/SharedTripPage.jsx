@@ -68,6 +68,16 @@ export default function SharedTripPage() {
       const memberTripId = await createMemberTrip(trip, user.uid, trip.sharedSections)
       navigate(`/trip/${memberTripId}/itinerary`)
     } catch (e) {
+      if (e.message === 'You already own this trip.') {
+        navigate(`/trip/${trip.id}/itinerary`)
+        return
+      }
+      // If member trip was created but owner update failed, try to find existing member trip
+      const existing = trip.memberTripIds?.[user.uid]
+      if (existing) {
+        navigate(`/trip/${existing}/itinerary`)
+        return
+      }
       console.error('createMemberTrip error:', e)
       setJoinError(e.message || 'Failed to join')
       setSaving(false)

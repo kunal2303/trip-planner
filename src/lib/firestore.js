@@ -79,11 +79,15 @@ export async function createMemberTrip(ownerTrip, memberUid, sharedSections) {
     ))
   }
 
-  // Register member on owner's trip
-  await updateDoc(doc(db, 'trips', ownerTrip.id), {
-    members: arrayUnion(memberUid),
-    [`memberTripIds.${memberUid}`]: memberTripId,
-  })
+  // Register member on owner's trip (best-effort — member trip already created)
+  try {
+    await updateDoc(doc(db, 'trips', ownerTrip.id), {
+      members: arrayUnion(memberUid),
+      [`memberTripIds.${memberUid}`]: memberTripId,
+    })
+  } catch (e) {
+    console.warn('Could not update owner trip with member info:', e.message)
+  }
 
   return memberTripId
 }
