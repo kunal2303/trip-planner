@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, MapPin, Calendar, Trash2, LogOut, ChevronRight, Users } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTrips } from '../contexts/TripContext'
-import { leaveTrip } from '../lib/firestore'
 import Modal from '../components/Modal'
 
 function fmtDate(d) {
@@ -223,7 +222,6 @@ export default function TripsPage() {
               <button
                 onClick={async () => {
                   try {
-                    await leaveTrip(confirmDelete.originTripId, user.uid)
                     await deleteTrip(confirmDelete.id)
                     setConfirmDelete(null)
                   } catch (err) {
