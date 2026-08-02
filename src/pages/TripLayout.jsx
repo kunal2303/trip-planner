@@ -39,10 +39,13 @@ export default function TripLayout() {
     setShowShareModal(true)
   }
 
-  const toggleSection = (key) => {
-    setSections(prev =>
-      prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key]
-    )
+  const toggleSection = async (key) => {
+    const newSections = sections.includes(key) ? sections.filter(s => s !== key) : [...sections, key]
+    setSections(newSections)
+    if (activeTrip?.isPublic) {
+      await syncSharedSections(activeTrip, newSections)
+      await updateTrip(tripId, { sharedSections: newSections })
+    }
   }
 
   const handleCopyLink = async () => {

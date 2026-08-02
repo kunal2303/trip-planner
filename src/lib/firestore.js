@@ -32,6 +32,7 @@ async function fanOut(trip, sub, fn) {
 }
 
 export const syncedAddItem = async (trip, sub, data) => {
+  if (!trip) return
   const ref = await addItem(trip.id, sub, data)
   await fanOut(trip, sub, memberTripId =>
     addDoc(tripCol(memberTripId, sub), { ...data, createdAt: serverTimestamp(), _syncedId: ref.id })
@@ -40,6 +41,7 @@ export const syncedAddItem = async (trip, sub, data) => {
 }
 
 export const syncedUpdateItem = async (trip, sub, id, data) => {
+  if (!trip) return updateItem(trip?.id, sub, id, data)
   await updateItem(trip.id, sub, id, data)
   await fanOut(trip, sub, async memberTripId => {
     const snap = await getDocs(query(tripCol(memberTripId, sub), where('_syncedId', '==', id)))
@@ -48,6 +50,7 @@ export const syncedUpdateItem = async (trip, sub, id, data) => {
 }
 
 export const syncedDeleteItem = async (trip, sub, id) => {
+  if (!trip) return
   await deleteItem(trip.id, sub, id)
   await fanOut(trip, sub, async memberTripId => {
     const snap = await getDocs(query(tripCol(memberTripId, sub), where('_syncedId', '==', id)))
