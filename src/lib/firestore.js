@@ -143,5 +143,5 @@ export async function getTripByShareToken(token) {
 
 export function getSubCollection(tripId, sub, cb) {
   const q = query(collection(db, 'trips', tripId, sub), orderBy('createdAt', 'asc'))
-  return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+  return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => cb([]))
 }
