@@ -244,6 +244,12 @@ export default function TripsPage() {
               Delete <strong>{confirmDelete?.name}</strong>? This cannot be undone.
             </p>
             {deleteError && <p className="text-red-500 text-xs mb-3">{deleteError}</p>}
+            <p className="text-xs text-gray-400 mb-3 font-mono break-all">
+              id: {confirmDelete?.id}<br/>
+              uid: {confirmDelete?.uid}<br/>
+              me: {user?.uid}<br/>
+              originTripId: {confirmDelete?.originTripId || 'none'}
+            </p>
             <div className="flex gap-3">
               <button onClick={() => { setConfirmDelete(null); setDeleteError('') }}
                 className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-600">
