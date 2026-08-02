@@ -5,6 +5,8 @@ service cloud.firestore {
       allow read: if resource.data.isPublic == true || request.auth != null;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
+      // Allow a member to remove themselves (for leave trip)
+      allow update: if request.auth != null && resource.data.members.hasAny([request.auth.uid]);
 
       match /{sub}/{itemId} {
         function tripData() {

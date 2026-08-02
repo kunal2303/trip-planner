@@ -221,9 +221,9 @@ export default function TripsPage() {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  leaveTrip(confirmDelete.originTripId, user.uid)
-                  deleteTrip(confirmDelete.id)
+                onClick={async () => {
+                  await leaveTrip(confirmDelete.originTripId, user.uid)
+                  await deleteTrip(confirmDelete.id)
                   setConfirmDelete(null)
                 }}
                 className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">

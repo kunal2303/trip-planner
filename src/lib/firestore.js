@@ -84,6 +84,22 @@ export async function createMemberTrip(ownerTrip, memberUid, sharedSections) {
   return memberTripId
 }
 
+// When owner changes sharedSections, wipe removed sections from all member copies
+export async function syncSharedSections(trip, newSections) {
+  const prev = trip.sharedSections || []
+  const removed = prev.filter(s => !newSections.includes(s))
+  const memberTripIds = Object.values(trip.memberTripIds || {}).filter(Boolean)
+  if (!removed.length || !memberTripIds.length) return
+  await Promise.all(
+    memberTripIds.flatMap(memberTripId =>
+      removed.map(async sub => {
+        const snap = await getDocs(tripCol(memberTripId, sub))
+        await Promise.all(snap.docs.map(d => deleteDoc(d.ref)))
+      })
+    )
+  )
+}
+
 export const leaveTrip = async (ownerTripId, memberUid) => {
   await updateDoc(doc(db, 'trips', ownerTripId), {
     members: arrayRemove(memberUid),

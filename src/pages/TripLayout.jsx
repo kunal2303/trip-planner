@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, CalendarDays, Ticket, Wallet, Package, MapPin, FileText, Share2, Check, X } from 'lucide-react'
 import { useTrips } from '../contexts/TripContext'
 import { useAuth } from '../contexts/AuthContext'
+import { syncSharedSections } from '../lib/firestore'
 
 const ALL_TABS = [
   { to: 'itinerary', label: 'Plan',     icon: CalendarDays },
@@ -49,6 +50,7 @@ export default function TripLayout() {
     if (!token) {
       token = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12)
     }
+    await syncSharedSections(activeTrip, sections)
     await updateTrip(tripId, { shareToken: token, isPublic: true, sharedSections: sections })
     const url = `${window.location.origin}/s/${token}`
     await navigator.clipboard.writeText(url)
