@@ -46,13 +46,9 @@ export default function SharedTripPage() {
 
   useEffect(() => {
     if (!trip) return
-    const unsubs = [
-      getSubCollection(trip.id, 'itinerary', setItinerary),
-      getSubCollection(trip.id, 'expenses', setExpenses),
-      getSubCollection(trip.id, 'packing', setPacking),
-      getSubCollection(trip.id, 'places', setPlaces),
-      getSubCollection(trip.id, 'notes', setNotes),
-    ]
+    const allowed = trip.sharedSections?.length ? trip.sharedSections : ['itinerary', 'expenses', 'packing', 'places', 'notes']
+    const map = { itinerary: setItinerary, expenses: setExpenses, packing: setPacking, places: setPlaces, notes: setNotes }
+    const unsubs = allowed.filter(s => map[s]).map(s => getSubCollection(trip.id, s, map[s]))
     return () => unsubs.forEach(u => u())
   }, [trip])
 

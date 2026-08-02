@@ -52,14 +52,15 @@ async function fetchDrivingDistance(from, to) {
   return null
 }
 
-function DirectionsChip({ from, to }) {
-  const [dist, setDist] = useState(null)
+function DirectionsChip({ from, to, activeTrip }) {
+  const cached = from?.distanceTo?.toId === to?.id ? from.distanceTo.result : null
+  const [dist, setDist] = useState(cached)
   const [loading, setLoading] = useState(false)
 
   const hasRef = !!(from?.mapsUrl || from?.location) && !!(to?.mapsUrl || to?.location)
 
   useEffect(() => {
-    if (!hasRef) return
+    if (!hasRef || cached) return
     setLoading(true)
     Promise.all([
       (from?.lat && from?.lng) ? Promise.resolve({ lat: from.lat, lng: from.lng }) : resolveCoords(from?.mapsUrl),
@@ -67,8 +68,15 @@ function DirectionsChip({ from, to }) {
     ]).then(([fromC, toC]) => {
       if (fromC && toC) return fetchDrivingDistance(fromC, toC)
       return null
-    }).then(d => setDist(d)).finally(() => setLoading(false))
-  }, [from?.mapsUrl, from?.lat, to?.mapsUrl, to?.lat])
+    }).then(result => {
+      setDist(result)
+      if (result && from?.id) {
+        syncedUpdateItem(activeTrip, 'itinerary', from.id, {
+          distanceTo: { toId: to.id, result },
+        })
+      }
+    }).finally(() => setLoading(false))
+  }, [from?.mapsUrl, from?.lat, to?.mapsUrl, to?.lat, cached])
 
   if (!hasRef) return null
 
@@ -175,9 +183,12 @@ export default function ItineraryPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const coords = await resolveCoords(form.mapsUrl)
-    const data = { ...form, lat: coords?.lat || null, lng: coords?.lng || null }
+    const data = { ...form, lat: coords?.lat || null, lng: coords?.lng || null, distanceTo: null }
     if (editingItem) {
       await syncedUpdateItem(activeTrip, 'itinerary', editingItem.id, data)
+      // Clear cached distance on the previous item too (it points to this item)
+      const prevItem = items[items.indexOf(items.find(i => i.id === editingItem.id)) - 1]
+      if (prevItem) await syncedUpdateItem(activeTrip, 'itinerary', prevItem.id, { distanceTo: null })
     } else {
       await syncedAddItem(activeTrip, 'itinerary', data)
     }
@@ -296,7 +307,7 @@ export default function ItineraryPage() {
                                   </div>
                                 </div>
                                 {idx < byDay[day].length - 1 && (
-                                  <DirectionsChip from={item} to={byDay[day][idx + 1]} />
+                                  <DirectionsChip from={item} to={byDay[day][idx + 1]} activeTrip={activeTrip} />
                                 )}
                               </div>
                             )}
