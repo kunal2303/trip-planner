@@ -22,6 +22,75 @@ export const updateItem = (tripId, sub, id, data) =>
 export const deleteItem = (tripId, sub, id) =>
   deleteDoc(tripDoc(tripId, sub, id))
 
+// Fan-out helper: writes to all member trip copies for shared sections
+async function fanOut(trip, sub, fn) {
+  const shared = trip.sharedSections || []
+  if (!shared.includes(sub)) return
+  const memberTripIds = Object.values(trip.memberTripIds || {})
+  if (!memberTripIds.length) return
+  await Promise.all(memberTripIds.map(fn))
+}
+
+export const syncedAddItem = async (trip, sub, data) => {
+  const ref = await addItem(trip.id, sub, data)
+  await fanOut(trip, sub, memberTripId =>
+    addDoc(tripCol(memberTripId, sub), { ...data, createdAt: serverTimestamp(), _syncedId: ref.id })
+  )
+  return ref
+}
+
+export const syncedUpdateItem = async (trip, sub, id, data) => {
+  await updateItem(trip.id, sub, id, data)
+  await fanOut(trip, sub, async memberTripId => {
+    const snap = await getDocs(query(tripCol(memberTripId, sub), where('_syncedId', '==', id)))
+    await Promise.all(snap.docs.map(d => updateDoc(d.ref, data)))
+  })
+}
+
+export const syncedDeleteItem = async (trip, sub, id) => {
+  await deleteItem(trip.id, sub, id)
+  await fanOut(trip, sub, async memberTripId => {
+    const snap = await getDocs(query(tripCol(memberTripId, sub), where('_syncedId', '==', id)))
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)))
+  })
+}
+
+export async function createMemberTrip(ownerTrip, memberUid, sharedSections) {
+  // Create a new trip doc owned by the member
+  const { uid, shareToken, isPublic, members, memberTripIds, sharedSections: _, ...tripFields } = ownerTrip
+  const memberTripRef = await addDoc(collection(db, 'trips'), {
+    ...tripFields,
+    uid: memberUid,
+    originTripId: ownerTrip.id,
+    createdAt: serverTimestamp(),
+  })
+  const memberTripId = memberTripRef.id
+
+  // Copy shared subcollections with _syncedId linking back to owner's item
+  const subs = sharedSections?.length ? sharedSections : []
+  for (const sub of subs) {
+    const snap = await getDocs(query(tripCol(ownerTrip.id, sub), orderBy('createdAt', 'asc')))
+    await Promise.all(snap.docs.map(d =>
+      addDoc(tripCol(memberTripId, sub), { ...d.data(), _syncedId: d.id, createdAt: serverTimestamp() })
+    ))
+  }
+
+  // Register member on owner's trip
+  await updateDoc(doc(db, 'trips', ownerTrip.id), {
+    members: arrayUnion(memberUid),
+    [`memberTripIds.${memberUid}`]: memberTripId,
+  })
+
+  return memberTripId
+}
+
+export const leaveTrip = async (ownerTripId, memberUid) => {
+  await updateDoc(doc(db, 'trips', ownerTripId), {
+    members: arrayRemove(memberUid),
+    [`memberTripIds.${memberUid}`]: null,
+  })
+}
+
 export async function uploadFile(_userId, _tripId, file) {
   const cloudName = 'pue4fbxb'
   const uploadPreset = 'trip-planner'
@@ -31,7 +100,6 @@ export async function uploadFile(_userId, _tripId, file) {
   formData.append('upload_preset', uploadPreset)
   formData.append('folder', 'trip-planner')
 
-  // Always upload as image — Cloudinary converts PDFs to images automatically
   const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
     method: 'POST',
     body: formData,
@@ -77,18 +145,3 @@ export function getSubCollection(tripId, sub, cb) {
   const q = query(collection(db, 'trips', tripId, sub), orderBy('createdAt', 'asc'))
   return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
 }
-
-export async function copyTripData(fromTripId, toTripId, sections) {
-  for (const sub of sections) {
-    const snap = await getDocs(query(collection(db, 'trips', fromTripId, sub), orderBy('createdAt', 'asc')))
-    await Promise.all(snap.docs.map(d =>
-      addDoc(collection(db, 'trips', toTripId, sub), { ...d.data(), createdAt: serverTimestamp() })
-    ))
-  }
-}
-
-export const joinTrip = (tripId, uid) =>
-  updateDoc(doc(db, 'trips', tripId), { members: arrayUnion(uid) })
-
-export const leaveTrip = (tripId, uid) =>
-  updateDoc(doc(db, 'trips', tripId), { members: arrayRemove(uid) })

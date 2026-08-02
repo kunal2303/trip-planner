@@ -4,7 +4,7 @@ import {
   CalendarDays, MapPin, Wallet, Package, FileText,
   Clock, ExternalLink, CheckCircle, Circle, UserPlus,
 } from 'lucide-react'
-import { getTripByShareToken, getSubCollection, joinTrip } from '../lib/firestore'
+import { getTripByShareToken, getSubCollection, createMemberTrip } from '../lib/firestore'
 import { useAuth } from '../contexts/AuthContext'
 
 const CAT_EMOJI = { Restaurant: '🍜', Attraction: '🗺', Museum: '🏛', Beach: '🏖', Hotel: '🏨', Bar: '🍸', Shop: '🛒', Park: '🌳', Other: '📍' }
@@ -69,10 +69,10 @@ export default function SharedTripPage() {
     setSaving(true)
     setJoinError('')
     try {
-      await joinTrip(trip.id, user.uid)
-      navigate(`/trip/${trip.id}/itinerary`)
+      const memberTripId = await createMemberTrip(trip, user.uid, trip.sharedSections)
+      navigate(`/trip/${memberTripId}/itinerary`)
     } catch (e) {
-      console.error('joinTrip error:', e)
+      console.error('createMemberTrip error:', e)
       setJoinError(e.message || 'Failed to join')
       setSaving(false)
     }
@@ -116,7 +116,7 @@ export default function SharedTripPage() {
             user.uid === trip.uid ? (
               <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2.5 py-1 rounded-full shrink-0">Your trip</span>
             ) : trip.members?.includes(user.uid) ? (
-              <button onClick={() => navigate(`/trip/${trip.id}/itinerary`)}
+              <button onClick={() => navigate(`/trip/${trip.memberTripIds?.[user.uid] || trip.id}/itinerary`)}
                 className="text-xs font-medium bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full shrink-0">
                 Open trip →
               </button>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useOutletContext } from 'react-router-dom'
 import { Plus, Trash2, Pencil } from 'lucide-react'
-import { subscribeSub, addItem, deleteItem, updateItem } from '../lib/firestore'
+import { subscribeSub, syncedAddItem, syncedUpdateItem, syncedDeleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
 
 const CATEGORIES = ['Food', 'Transport', 'Accommodation', 'Activities', 'Shopping', 'Health', 'Other']
@@ -11,15 +11,14 @@ const EMPTY = { title: '', amount: '', currency: 'INR', category: 'Food', date: 
 
 export default function ExpensesPage() {
   const { tripId } = useParams()
-  const { isOwner, sharedSections } = useOutletContext() || {}
-  const canEdit = isOwner || sharedSections?.includes('expenses')
+  const { activeTrip } = useOutletContext() || {}
   const [items, setItems] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [currency, setCurrency] = useState('INR')
   const [form, setForm] = useState(EMPTY)
 
-  useEffect(() => subscribeSub(tripId, 'expenses', canEdit ? setItems : () => {}), [tripId, canEdit])
+  useEffect(() => subscribeSub(tripId, 'expenses', setItems), [tripId])
 
   const total = items.filter(i => i.currency === currency).reduce((s, i) => s + parseFloat(i.amount || 0), 0)
 
@@ -40,9 +39,9 @@ export default function ExpensesPage() {
     e.preventDefault()
     const data = { ...form, amount: parseFloat(form.amount) }
     if (editingItem) {
-      await updateItem(tripId, 'expenses', editingItem.id, data)
+      await syncedUpdateItem(activeTrip, 'expenses', editingItem.id, data)
     } else {
-      await addItem(tripId, 'expenses', data)
+      await syncedAddItem(activeTrip, 'expenses', data)
     }
     setShowModal(false)
     setEditingItem(null)
@@ -60,12 +59,11 @@ export default function ExpensesPage() {
           </select>
         </div>
         <button onClick={openAdd}
-          className={`flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-xl text-sm font-medium ${!canEdit ? 'invisible' : ''}`}>
+          className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-xl text-sm font-medium">
           <Plus size={14} /> Add
         </button>
       </div>
 
-      {/* Summary card */}
       <div className="bg-blue-600 text-white rounded-2xl p-4 mb-4">
         <p className="text-blue-200 text-sm">Total ({currency})</p>
         <p className="text-3xl font-bold mt-1">{total.toFixed(2)}</p>
@@ -91,10 +89,10 @@ export default function ExpensesPage() {
               {item.notes && <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{item.notes}</p>}
             </div>
             <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{item.currency} {parseFloat(item.amount).toFixed(2)}</span>
-            <button onClick={() => openEdit(item)} className={`p-1.5 text-gray-300 hover:text-indigo-400 transition ${!canEdit ? 'hidden' : ''}`}>
+            <button onClick={() => openEdit(item)} className="p-1.5 text-gray-300 hover:text-indigo-400 transition">
               <Pencil size={14} />
             </button>
-            <button onClick={() => deleteItem(tripId, 'expenses', item.id)} className={`p-1.5 text-gray-300 hover:text-red-400 transition ${!canEdit ? 'hidden' : ''}`}>
+            <button onClick={() => syncedDeleteItem(activeTrip, 'expenses', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
               <Trash2 size={14} />
             </button>
           </div>

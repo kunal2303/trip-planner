@@ -1,21 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useParams, useOutletContext } from 'react-router-dom'
 import { Plus, Trash2, ChevronRight } from 'lucide-react'
-import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
+import { subscribeSub, syncedAddItem, syncedUpdateItem, syncedDeleteItem } from '../lib/firestore'
 
 export default function NotesPage() {
   const { tripId } = useParams()
-  const { isOwner, sharedSections } = useOutletContext() || {}
-  const canEdit = isOwner || sharedSections?.includes('notes')
+  const { activeTrip } = useOutletContext() || {}
   const [notes, setNotes] = useState([])
   const [selected, setSelected] = useState(null)
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
 
-  useEffect(() => subscribeSub(tripId, 'notes', canEdit ? setNotes : () => {}), [tripId, canEdit])
+  useEffect(() => subscribeSub(tripId, 'notes', setNotes), [tripId])
 
   const createNote = async () => {
-    const ref = await addItem(tripId, 'notes', { title: 'New note', content: '' })
+    const ref = await syncedAddItem(activeTrip, 'notes', { title: 'New note', content: '' })
     setSelected({ id: ref.id, title: 'New note', content: '' })
     setTitle('New note')
     setContent('')
@@ -29,7 +28,7 @@ export default function NotesPage() {
 
   const saveNote = () => {
     if (!selected) return
-    updateItem(tripId, 'notes', selected.id, { title, content })
+    syncedUpdateItem(activeTrip, 'notes', selected.id, { title, content })
   }
 
   function timeAgo(ts) {
@@ -49,26 +48,22 @@ export default function NotesPage() {
             className="flex items-center gap-1 text-indigo-600 text-sm font-semibold">
             ← Notes
           </button>
-          {canEdit && (
-            <button onClick={saveNote}
-              className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-xl font-medium">
-              Save
-            </button>
-          )}
+          <button onClick={saveNote}
+            className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-xl font-medium">
+            Save
+          </button>
         </div>
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          onBlur={canEdit ? saveNote : undefined}
-          readOnly={!canEdit}
+          onBlur={saveNote}
           className="text-xl font-bold text-gray-900 border-none focus:outline-none bg-transparent w-full mb-3"
           placeholder="Note title"
         />
         <textarea
           value={content}
-          onChange={e => canEdit && setContent(e.target.value)}
-          onBlur={canEdit ? saveNote : undefined}
-          readOnly={!canEdit}
+          onChange={e => setContent(e.target.value)}
+          onBlur={saveNote}
           className="flex-1 w-full border-none focus:outline-none bg-transparent text-sm text-gray-600 leading-relaxed resize-none"
           placeholder="Start writing…"
           style={{ minHeight: '60vh' }}
@@ -81,11 +76,9 @@ export default function NotesPage() {
     <div>
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-base font-bold text-gray-900">Notes</h2>
-        {canEdit && (
-          <button onClick={createNote} className="btn-ghost border border-indigo-200">
-            <Plus size={15} /> New
-          </button>
-        )}
+        <button onClick={createNote} className="btn-ghost border border-indigo-200">
+          <Plus size={15} /> New
+        </button>
       </div>
 
       {notes.length === 0 && (
@@ -108,12 +101,10 @@ export default function NotesPage() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs text-gray-300">{timeAgo(note.createdAt)}</span>
-              {canEdit && (
-                <button onClick={e => { e.stopPropagation(); deleteItem(tripId, 'notes', note.id) }}
-                  className="p-1.5 text-gray-300 hover:text-red-400 transition">
-                  <Trash2 size={14} />
-                </button>
-              )}
+              <button onClick={e => { e.stopPropagation(); syncedDeleteItem(activeTrip, 'notes', note.id) }}
+                className="p-1.5 text-gray-300 hover:text-red-400 transition">
+                <Trash2 size={14} />
+              </button>
               <ChevronRight size={14} className="text-gray-300" />
             </div>
           </div>

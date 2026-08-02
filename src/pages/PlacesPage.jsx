@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useOutletContext } from 'react-router-dom'
 import { Plus, Trash2, ExternalLink, CheckCircle, Circle, Pencil } from 'lucide-react'
-import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
+import { subscribeSub, syncedAddItem, syncedUpdateItem, syncedDeleteItem } from '../lib/firestore'
 import Modal from '../components/Modal'
 
 const CATEGORIES = ['Restaurant', 'Attraction', 'Museum', 'Beach', 'Hotel', 'Bar', 'Shop', 'Park', 'Other']
@@ -11,15 +11,14 @@ const EMPTY = { name: '', category: 'Restaurant', address: '', mapsUrl: '', note
 
 export default function PlacesPage() {
   const { tripId } = useParams()
-  const { isOwner, sharedSections } = useOutletContext() || {}
-  const canEdit = isOwner || sharedSections?.includes('places')
+  const { activeTrip } = useOutletContext() || {}
   const [items, setItems] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [filter, setFilter] = useState('All')
   const [form, setForm] = useState(EMPTY)
 
-  useEffect(() => subscribeSub(tripId, 'places', canEdit ? setItems : () => {}), [tripId, canEdit])
+  useEffect(() => subscribeSub(tripId, 'places', setItems), [tripId])
 
   const openAdd = () => { setEditingItem(null); setForm(EMPTY); setShowModal(true) }
   const openEdit = (item) => {
@@ -31,9 +30,9 @@ export default function PlacesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (editingItem) {
-      await updateItem(tripId, 'places', editingItem.id, form)
+      await syncedUpdateItem(activeTrip, 'places', editingItem.id, form)
     } else {
-      await addItem(tripId, 'places', form)
+      await syncedAddItem(activeTrip, 'places', form)
     }
     setShowModal(false)
     setEditingItem(null)
@@ -53,11 +52,9 @@ export default function PlacesPage() {
             <p className="text-xs text-gray-400 mt-0.5">{visitedCount}/{items.length} visited</p>
           )}
         </div>
-        {canEdit && (
-          <button onClick={openAdd} className="btn-ghost border border-indigo-200">
+        <button onClick={openAdd} className="btn-ghost border border-indigo-200">
             <Plus size={15} /> Add
           </button>
-        )}
       </div>
 
       {/* Category filter */}
@@ -105,20 +102,18 @@ export default function PlacesPage() {
                 )}
               </div>
               <div className="flex flex-col gap-1.5 items-center shrink-0">
-                <button onClick={() => canEdit && updateItem(tripId, 'places', item.id, { visited: !item.visited })}
+                <button onClick={() => syncedUpdateItem(activeTrip, 'places', item.id, { visited: !item.visited })}
                   className="text-gray-300 hover:text-indigo-500 transition">
                   {item.visited
                     ? <CheckCircle size={20} className="text-indigo-500" />
                     : <Circle size={20} />}
                 </button>
-                {canEdit && (<>
-                  <button onClick={() => openEdit(item)} className="p-1 text-gray-300 hover:text-indigo-400 transition">
-                    <Pencil size={14} />
-                  </button>
-                  <button onClick={() => deleteItem(tripId, 'places', item.id)} className="p-1 text-gray-300 hover:text-red-400 transition">
-                    <Trash2 size={14} />
-                  </button>
-                </>)}
+                <button onClick={() => openEdit(item)} className="p-1 text-gray-300 hover:text-indigo-400 transition">
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => syncedDeleteItem(activeTrip, 'places', item.id)} className="p-1 text-gray-300 hover:text-red-400 transition">
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           </div>

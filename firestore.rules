@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /trips/{tripId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
+
+      match /{sub}/{itemId} {
+        function tripData() {
+          return get(/databases/$(database)/documents/trips/$(tripId)).data;
+        }
+
+        function originTripData() {
+          return get(/databases/$(database)/documents/trips/$(tripData().originTripId)).data;
+        }
+
+        allow read: if request.auth != null && (
+          request.auth.uid == tripData().uid ||
+          tripData().members.hasAny([request.auth.uid])
+        );
+
+        allow write: if request.auth != null &&
+          request.auth.uid == tripData().uid;
+
+        allow write: if request.auth != null &&
+          tripData().originTripId != null &&
+          request.auth.uid == originTripData().uid;
+      }
+    }
+  }
+}

@@ -5,7 +5,6 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from './AuthContext'
-import { joinTrip, leaveTrip } from '../lib/firestore'
 
 const TripContext = createContext(null)
 
@@ -52,11 +51,8 @@ export function TripProvider({ children }) {
 
   const updateTrip = (id, data) => updateDoc(doc(db, 'trips', id), data)
   const deleteTrip = (id) => deleteDoc(doc(db, 'trips', id))
-  const joinTripForUser = (tripId) => joinTrip(tripId, user.uid)
-  const leaveTripForUser = (tripId) => leaveTrip(tripId, user.uid)
-
   return (
-    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, loading, error, createTrip, updateTrip, deleteTrip, joinTripForUser, leaveTripForUser }}>
+    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, loading, error, createTrip, updateTrip, deleteTrip }}>
       {children}
     </TripContext.Provider>
   )

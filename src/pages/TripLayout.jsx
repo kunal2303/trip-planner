@@ -32,8 +32,6 @@ export default function TripLayout() {
 
   const isOwner = activeTrip?.uid === user?.uid
   const tripLoaded = !!activeTrip
-  const sharedSections = (activeTrip?.sharedSections?.length > 0) ? activeTrip.sharedSections : ALL_SECTIONS
-  const visibleTabs = ALL_TABS
 
   const openShareModal = () => {
     setSections(activeTrip?.sharedSections || ALL_SECTIONS)
@@ -93,13 +91,13 @@ export default function TripLayout() {
 
       {/* Page content */}
       <main className="flex-1 max-w-lg w-full mx-auto px-4 py-4 pb-nav overflow-y-auto">
-        <Outlet context={{ isOwner, sharedSections, activeTrip }} />
+        <Outlet context={{ activeTrip }} />
       </main>
 
       {/* Bottom nav bar */}
       <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-100 z-30 safe-bottom">
         <div className="flex max-w-lg mx-auto">
-          {tripLoaded && visibleTabs.map(({ to, label, icon: Icon }) => (
+          {tripLoaded && ALL_TABS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -133,7 +131,7 @@ export default function TripLayout() {
               </button>
             </div>
 
-            <p className="text-xs text-gray-400 mb-3">Choose which sections to include</p>
+            <p className="text-xs text-gray-400 mb-3">Choose which sections to share</p>
             <div className="grid grid-cols-2 gap-2 mb-5">
               {ALL_SECTIONS.map(key => (
                 <button
@@ -174,3 +172,4 @@ export default function TripLayout() {
     </div>
   )
 }
+

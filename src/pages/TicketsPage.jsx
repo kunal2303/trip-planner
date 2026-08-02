@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useOutletContext } from 'react-router-dom'
 import { Trash2, FileText, Upload, X, Plus } from 'lucide-react'
-import { subscribeSub, addItem, deleteItem, updateItem, uploadFile, deleteFile } from '../lib/firestore'
+import { subscribeSub, syncedAddItem, syncedUpdateItem, syncedDeleteItem, uploadFile, deleteFile } from '../lib/firestore'
 import { useAuth } from '../contexts/AuthContext'
 
 const CATEGORIES = ['Bus', 'Hotel', 'Train', 'Flight', 'Other']
@@ -21,8 +21,7 @@ function pageUrl(url, page) {
 export default function TicketsPage() {
   const { tripId } = useParams()
   const { user } = useAuth()
-  const { isOwner, sharedSections } = useOutletContext() || {}
-  const canEdit = isOwner || sharedSections?.includes('tickets')
+  const { activeTrip } = useOutletContext() || {}
   const [items, setItems] = useState([])
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
@@ -32,7 +31,7 @@ export default function TicketsPage() {
   const [addingTo, setAddingTo] = useState(null)
   const titleRef = useRef()
 
-  useEffect(() => subscribeSub(tripId, 'tickets', canEdit ? setItems : () => {}), [tripId, canEdit])
+  useEffect(() => subscribeSub(tripId, 'tickets', setItems), [tripId])
 
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || [])
@@ -48,7 +47,7 @@ export default function TicketsPage() {
     setUploadError('')
     try {
       const uploaded = await Promise.all(files.map(f => uploadFile(user.uid, tripId, f)))
-      await addItem(tripId, 'tickets', { ...form, files: uploaded })
+      await syncedAddItem(activeTrip, 'tickets', { ...form, files: uploaded })
       setForm({ title: '', category: 'Bus', notes: '' })
     } catch (err) {
       setUploadError(err.message || 'Upload failed')
@@ -66,7 +65,7 @@ export default function TicketsPage() {
     try {
       const uploaded = await Promise.all(files.map(f => uploadFile(user.uid, tripId, f)))
       const existing = item.files || []
-      await updateItem(tripId, 'tickets', item.id, { files: [...existing, ...uploaded] })
+      await syncedUpdateItem(activeTrip, 'tickets', item.id, { files: [...existing, ...uploaded] })
       setAddingTo(null)
     } catch (err) {
       setUploadError(err.message || 'Upload failed')
@@ -79,16 +78,15 @@ export default function TicketsPage() {
   const handleDelete = async (item) => {
     const files = item.files || []
     await Promise.all(files.map(f => deleteFile(f.publicId).catch(() => {})))
-    // also handle legacy single-file items
     if (item.publicId) await deleteFile(item.publicId).catch(() => {})
-    await deleteItem(tripId, 'tickets', item.id)
+    await syncedDeleteItem(activeTrip, 'tickets', item.id)
   }
 
   const handleDeleteFile = async (item, fileIndex) => {
     const files = [...(item.files || [])]
     const [removed] = files.splice(fileIndex, 1)
     if (removed.publicId) await deleteFile(removed.publicId).catch(() => {})
-    await updateItem(tripId, 'tickets', item.id, { files })
+    await syncedUpdateItem(activeTrip, 'tickets', item.id, { files })
   }
 
   const renderFile = (file, idx, item) => {
@@ -119,8 +117,7 @@ export default function TicketsPage() {
     <div>
       <h2 className="text-base font-bold text-gray-900 mb-5">Tickets & Documents</h2>
 
-      {canEdit && (
-        <div className="card p-4 mb-5 space-y-3">
+      <div className="card p-4 mb-5 space-y-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Add Document</p>
         <input
           ref={titleRef}
@@ -149,7 +146,6 @@ export default function TicketsPage() {
         </label>
         {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
       </div>
-      )}
 
       {items.length === 0 && (
         <div className="text-center py-12">
@@ -173,7 +169,7 @@ export default function TicketsPage() {
                   <p className="font-semibold text-sm text-gray-900 truncate">{item.title}</p>
                   <p className="text-xs text-gray-400">{item.category} · {files.length} file{files.length !== 1 ? 's' : ''}</p>
                 </div>
-                <button onClick={e => { e.stopPropagation(); handleDelete(item) }} className={`p-1.5 text-gray-300 hover:text-red-400 transition ${!canEdit ? 'hidden' : ''}`}>
+                <button onClick={e => { e.stopPropagation(); handleDelete(item) }} className="p-1.5 text-gray-300 hover:text-red-400 transition">
                   <Trash2 size={14} />
                 </button>
               </div>

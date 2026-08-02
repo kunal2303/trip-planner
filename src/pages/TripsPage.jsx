@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, MapPin, Calendar, Trash2, LogOut, ChevronRight, Users } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTrips } from '../contexts/TripContext'
+import { leaveTrip } from '../lib/firestore'
 import Modal from '../components/Modal'
 
 function fmtDate(d) {
@@ -32,7 +33,7 @@ function tripColor(id) {
 
 export default function TripsPage() {
   const { logout, user } = useAuth()
-  const { trips, loading, error: tripError, createTrip, deleteTrip, leaveTripForUser, setActiveTrip } = useTrips()
+  const { trips, loading, error: tripError, createTrip, deleteTrip, setActiveTrip } = useTrips()
   const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ name: '', destination: '', startDate: '', endDate: '' })
@@ -109,7 +110,7 @@ export default function TripsPage() {
 
         <div className="space-y-3">
           {trips.map(trip => {
-            const isJoined = trip.uid !== user?.uid
+            const isJoined = !!trip.originTripId
             return (
               <div
                 key={trip.id}
@@ -208,8 +209,8 @@ export default function TripsPage() {
 
       {/* Delete / Leave confirm Modal */}
       <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)}
-        title={confirmDelete?.uid !== user?.uid ? 'Leave Trip' : 'Delete Trip'}>
-        {confirmDelete?.uid !== user?.uid ? (
+        title={confirmDelete?.originTripId ? 'Leave Trip' : 'Delete Trip'}>
+        {confirmDelete?.originTripId ? (
           <>
             <p className="text-gray-600 text-sm mb-5">
               Leave <strong>{confirmDelete?.name}</strong>? You can rejoin via the share link.
@@ -220,7 +221,11 @@ export default function TripsPage() {
                 Cancel
               </button>
               <button
-                onClick={() => { leaveTripForUser(confirmDelete.id); setConfirmDelete(null) }}
+                onClick={() => {
+                  leaveTrip(confirmDelete.originTripId, user.uid)
+                  deleteTrip(confirmDelete.id)
+                  setConfirmDelete(null)
+                }}
                 className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
                 Leave
               </button>

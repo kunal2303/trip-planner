@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useOutletContext } from 'react-router-dom'
 import { Plus, Trash2, Clock, MapPin, Pencil, ExternalLink, Navigation, ChevronDown, ChevronUp, GripVertical } from 'lucide-react'
-import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
+import { subscribeSub, syncedAddItem, syncedUpdateItem, syncedDeleteItem, updateItem } from '../lib/firestore'
 import Modal from '../components/Modal'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
-  useSensor, useSensors, DragOverlay,
+  useSensor, useSensors,
 } from '@dnd-kit/core'
 import {
   SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
@@ -110,8 +110,7 @@ function SortableItem({ id, children }) {
 
 export default function ItineraryPage() {
   const { tripId } = useParams()
-  const { isOwner, sharedSections } = useOutletContext() || {}
-  const canEdit = isOwner || sharedSections?.includes('itinerary')
+  const { activeTrip } = useOutletContext() || {}
   const [items, setItems] = useState([])
   const [places, setPlaces] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -125,7 +124,7 @@ export default function ItineraryPage() {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   )
 
-  useEffect(() => subscribeSub(tripId, 'itinerary', canEdit ? setItems : () => {}), [tripId, canEdit])
+  useEffect(() => subscribeSub(tripId, 'itinerary', setItems), [tripId])
   useEffect(() => subscribeSub(tripId, 'places', setPlaces), [tripId])
 
   const byDay = items.reduce((acc, item) => {
@@ -147,7 +146,6 @@ export default function ItineraryPage() {
   const handleDragEnd = ({ active, over }) => {
     setActiveId(null)
     if (!over || active.id === over.id) return
-    // Find which day this drag happened in
     for (const day of days) {
       const dayItems = byDay[day]
       const oldIndex = dayItems.findIndex(i => i.id === active.id)
@@ -186,9 +184,9 @@ export default function ItineraryPage() {
     const coords = await resolveCoords(form.mapsUrl)
     const data = { ...form, lat: coords?.lat || null, lng: coords?.lng || null }
     if (editingItem) {
-      await updateItem(tripId, 'itinerary', editingItem.id, data)
+      await syncedUpdateItem(activeTrip, 'itinerary', editingItem.id, data)
     } else {
-      await addItem(tripId, 'itinerary', data)
+      await syncedAddItem(activeTrip, 'itinerary', data)
     }
     setShowModal(false)
     setForm(EMPTY)
@@ -203,11 +201,9 @@ export default function ItineraryPage() {
     <div>
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-base font-bold text-gray-900">Itinerary</h2>
-        {canEdit && (
-          <button onClick={openAdd} className="btn-ghost border border-indigo-200">
-            <Plus size={15} /> Add
-          </button>
-        )}
+        <button onClick={openAdd} className="btn-ghost border border-indigo-200">
+          <Plus size={15} /> Add
+        </button>
       </div>
 
       {items.length === 0 && (
@@ -268,11 +264,9 @@ export default function ItineraryPage() {
                                   <div className="absolute -left-5 top-3 w-3 h-3 rounded-full bg-white border-2 border-indigo-400" />
                                   <div className="card p-4">
                                     <div className="flex items-start justify-between gap-2">
-                                      {canEdit && (
-                                        <button {...dragHandleProps} className="mt-0.5 p-0.5 text-gray-300 hover:text-gray-400 cursor-grab active:cursor-grabbing touch-none shrink-0">
+                                      <button {...dragHandleProps} className="mt-0.5 p-0.5 text-gray-300 hover:text-gray-400 cursor-grab active:cursor-grabbing touch-none shrink-0">
                                           <GripVertical size={14} />
                                         </button>
-                                      )}
                                       <div className="flex-1 min-w-0">
                                         <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
                                         <div className="flex flex-wrap items-center gap-3 mt-1.5">
@@ -296,16 +290,14 @@ export default function ItineraryPage() {
                                         {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
                                       </div>
                                       <div className="flex items-center gap-1 shrink-0">
-                                        {canEdit && (<>
-                                          <button onClick={() => openEdit(item)}
+                                        <button onClick={() => openEdit(item)}
                                             className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
                                             <Pencil size={14} />
                                           </button>
-                                          <button onClick={() => deleteItem(tripId, 'itinerary', item.id)}
+                                          <button onClick={() => syncedDeleteItem(activeTrip, 'itinerary', item.id)}
                                             className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
                                             <Trash2 size={14} />
                                           </button>
-                                        </>)}
                                       </div>
                                     </div>
                                   </div>

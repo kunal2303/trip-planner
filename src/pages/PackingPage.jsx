@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useOutletContext } from 'react-router-dom'
 import { Plus, Trash2, Check } from 'lucide-react'
-import { subscribeSub, addItem, updateItem, deleteItem } from '../lib/firestore'
+import { subscribeSub, syncedAddItem, syncedUpdateItem, syncedDeleteItem } from '../lib/firestore'
 
 const TEMPLATES = {
   'Clothing':    ['T-shirts', 'Pants', 'Underwear', 'Socks', 'Jacket', 'Shoes', 'Swimwear'],
@@ -12,25 +12,24 @@ const TEMPLATES = {
 
 export default function PackingPage() {
   const { tripId } = useParams()
-  const { isOwner, sharedSections } = useOutletContext() || {}
-  const canEdit = isOwner || sharedSections?.includes('packing')
+  const { activeTrip } = useOutletContext() || {}
   const [items, setItems] = useState([])
   const [newItem, setNewItem] = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
 
-  useEffect(() => subscribeSub(tripId, 'packing', canEdit ? setItems : () => {}), [tripId, canEdit])
+  useEffect(() => subscribeSub(tripId, 'packing', setItems), [tripId])
 
   const addSingle = async (e) => {
     e.preventDefault()
     if (!newItem.trim()) return
-    await addItem(tripId, 'packing', { name: newItem.trim(), packed: false })
+    await syncedAddItem(activeTrip, 'packing', { name: newItem.trim(), packed: false })
     setNewItem('')
   }
 
-  const toggle = (item) => updateItem(tripId, 'packing', item.id, { packed: !item.packed })
+  const toggle = (item) => syncedUpdateItem(activeTrip, 'packing', item.id, { packed: !item.packed })
 
   const addTemplate = async (category) => {
-    await Promise.all(TEMPLATES[category].map(name => addItem(tripId, 'packing', { name, packed: false, category })))
+    await Promise.all(TEMPLATES[category].map(name => syncedAddItem(activeTrip, 'packing', { name, packed: false, category })))
     setShowTemplates(false)
   }
 
@@ -47,15 +46,12 @@ export default function PackingPage() {
             <p className="text-xs text-gray-400 mt-0.5">{packed.length}/{items.length} packed</p>
           )}
         </div>
-        {canEdit && (
-          <button onClick={() => setShowTemplates(!showTemplates)}
-            className={`btn-ghost border text-xs ${showTemplates ? 'border-indigo-400 bg-indigo-50' : 'border-indigo-200'}`}>
-            Templates
-          </button>
-        )}
+        <button onClick={() => setShowTemplates(!showTemplates)}
+          className={`btn-ghost border text-xs ${showTemplates ? 'border-indigo-400 bg-indigo-50' : 'border-indigo-200'}`}>
+          Templates
+        </button>
       </div>
 
-      {/* Progress bar */}
       {items.length > 0 && (
         <div className="mb-4">
           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -65,7 +61,6 @@ export default function PackingPage() {
         </div>
       )}
 
-      {/* Templates */}
       {showTemplates && (
         <div className="card p-4 mb-4">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Quick add</p>
@@ -80,15 +75,12 @@ export default function PackingPage() {
         </div>
       )}
 
-      {/* Add input */}
-      {canEdit && (
-        <form onSubmit={addSingle} className="flex gap-2 mb-5">
-          <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="Add item…" className="field flex-1" />
-          <button type="submit" className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shrink-0 hover:bg-indigo-700 active:scale-95 transition">
-            <Plus size={20} />
-          </button>
-        </form>
-      )}
+      <form onSubmit={addSingle} className="flex gap-2 mb-5">
+        <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="Add item…" className="field flex-1" />
+        <button type="submit" className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shrink-0 hover:bg-indigo-700 active:scale-95 transition">
+          <Plus size={20} />
+        </button>
+      </form>
 
       {items.length === 0 && (
         <div className="text-center py-10">
@@ -96,7 +88,6 @@ export default function PackingPage() {
         </div>
       )}
 
-      {/* Unpacked */}
       <div className="space-y-2">
         {unpacked.map(item => (
           <div key={item.id} className="card flex items-center gap-3 px-4 py-3">
@@ -104,16 +95,13 @@ export default function PackingPage() {
               className="w-6 h-6 rounded-lg border-2 border-gray-300 flex items-center justify-center shrink-0 hover:border-indigo-400 transition">
             </button>
             <span className="flex-1 text-sm text-gray-800 font-medium">{item.name}</span>
-            {canEdit && (
-              <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
-                <Trash2 size={14} />
-              </button>
-            )}
+            <button onClick={() => syncedDeleteItem(activeTrip, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
+              <Trash2 size={14} />
+            </button>
           </div>
         ))}
       </div>
 
-      {/* Packed */}
       {packed.length > 0 && (
         <>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-5 mb-2">Packed</p>
@@ -125,11 +113,9 @@ export default function PackingPage() {
                   <Check size={13} className="text-white" strokeWidth={3} />
                 </button>
                 <span className="flex-1 text-sm text-gray-400 line-through">{item.name}</span>
-                {canEdit && (
-                  <button onClick={() => deleteItem(tripId, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                <button onClick={() => syncedDeleteItem(activeTrip, 'packing', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
+                  <Trash2 size={14} />
+                </button>
               </div>
             ))}
           </div>
