@@ -35,22 +35,26 @@ export default async function handler(req, res) {
     const fromBody = extractCoords(body)
     if (fromBody) return res.json(fromBody)
 
-    // Fall back to place name geocoding via Photon (OpenStreetMap)
+    // Fall back to place name geocoding via Photon — only if name looks specific enough
     const placeMatch = finalUrl.match(/\/maps\/place\/([^/]+)/)
     if (placeMatch) {
       let placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '))
       // Strip leading Plus Code (e.g. "8Q3Q+7GH ")
       placeName = placeName.replace(/^[A-Z0-9]{4,6}\+[A-Z0-9]{2,3}\s+/i, '')
-      // Try progressively shorter queries (full name, then just before first comma)
-      const queries = [placeName, placeName.split(',')[0].trim()]
-      for (const q of queries) {
-        const geoRes = await fetch(
-          `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1`,
-          { headers: { 'User-Agent': 'TripPlanner/1.0' } }
-        )
-        const geoData = await geoRes.json()
-        const coords = geoData.features?.[0]?.geometry?.coordinates
-        if (coords) return res.json({ lat: coords[1], lng: coords[0] })
+      // Only geocode if name has 3+ words or contains a comma (specific enough)
+      const words = placeName.trim().split(/\s+/)
+      if (words.length >= 3 || placeName.includes(',')) {
+        const queries = [placeName, placeName.split(',')[0].trim()]
+        for (const q of queries) {
+          if (q.split(/\s+/).length < 2) continue
+          const geoRes = await fetch(
+            `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=en`,
+            { headers: { 'User-Agent': 'TripPlanner/1.0' } }
+          )
+          const geoData = await geoRes.json()
+          const coords = geoData.features?.[0]?.geometry?.coordinates
+          if (coords) return res.json({ lat: coords[1], lng: coords[0] })
+        }
       }
     }
 
