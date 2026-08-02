@@ -6,7 +6,10 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
       // Allow a member to remove themselves (for leave trip)
-      allow update: if request.auth != null && resource.data.members.hasAny([request.auth.uid]);
+      allow update: if request.auth != null
+        && (resource.data.members is list)
+        && resource.data.members.hasAll([request.auth.uid])
+        && request.resource.data.uid == resource.data.uid;
 
       match /{sub}/{itemId} {
         function tripData() {
