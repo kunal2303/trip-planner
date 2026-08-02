@@ -222,9 +222,13 @@ export default function TripsPage() {
               </button>
               <button
                 onClick={async () => {
-                  await leaveTrip(confirmDelete.originTripId, user.uid)
-                  await deleteTrip(confirmDelete.id)
-                  setConfirmDelete(null)
+                  try {
+                    await leaveTrip(confirmDelete.originTripId, user.uid)
+                    await deleteTrip(confirmDelete.id)
+                    setConfirmDelete(null)
+                  } catch (err) {
+                    alert('Leave failed: ' + err.message)
+                  }
                 }}
                 className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
                 Leave
