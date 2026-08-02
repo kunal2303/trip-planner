@@ -5,11 +5,11 @@ service cloud.firestore {
       allow read: if resource.data.isPublic == true || request.auth != null;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
-      // Allow a member to remove themselves (for leave trip)
-      allow update: if request.auth != null
-        && (resource.data.members is list)
-        && resource.data.members.hasAll([request.auth.uid])
-        && request.resource.data.uid == resource.data.uid;
+      // Allow member to delete their joined trip copy
+      allow delete: if request.auth != null && resource.data.originTripId != null;
+      // Allow member to update owner trip (to remove themselves from members array)
+      allow update: if request.auth != null && resource.data.members is list
+        && resource.data.members.hasAll([request.auth.uid]);
 
       match /{sub}/{itemId} {
         function tripData() {

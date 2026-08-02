@@ -223,7 +223,7 @@ export default function TripsPage() {
               <button
                 onClick={async () => {
                   try {
-                    leaveTrip(confirmDelete.originTripId, user.uid) // best-effort
+                    await leaveTrip(confirmDelete.originTripId, user.uid)
                     await deleteTrip(confirmDelete.id)
                     setConfirmDelete(null)
                   } catch (err) {

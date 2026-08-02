@@ -101,13 +101,15 @@ export async function syncSharedSections(trip, newSections) {
 }
 
 export const leaveTrip = async (ownerTripId, memberUid) => {
-  // Best-effort cleanup of owner's members array — may fail if rules block it, which is fine
   try {
     await updateDoc(doc(db, 'trips', ownerTripId), {
       members: arrayRemove(memberUid),
       [`memberTripIds.${memberUid}`]: null,
     })
-  } catch (_) {}
+  } catch (e) {
+    console.error('leaveTrip failed:', e.message)
+    throw e
+  }
 }
 
 export async function uploadFile(_userId, _tripId, file) {
