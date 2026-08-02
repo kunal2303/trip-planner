@@ -57,7 +57,7 @@ export const syncedDeleteItem = async (trip, sub, id) => {
 
 export async function createMemberTrip(ownerTrip, memberUid, sharedSections) {
   // Create a new trip doc owned by the member
-  const { uid, shareToken, isPublic, members, memberTripIds, sharedSections: _, ...tripFields } = ownerTrip
+  const { uid, shareToken, isPublic, members, memberTripIds, sharedSections: _, originTripId: _oid, ...tripFields } = ownerTrip
   const memberTripRef = await addDoc(collection(db, 'trips'), {
     ...tripFields,
     uid: memberUid,

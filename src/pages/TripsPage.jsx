@@ -111,7 +111,7 @@ export default function TripsPage() {
 
         <div className="space-y-3">
           {trips.map(trip => {
-            const isJoined = !!trip.originTripId
+            const isJoined = !!trip.originTripId && trip.originTripId !== trip.id
             return (
               <div
                 key={trip.id}
@@ -210,8 +210,8 @@ export default function TripsPage() {
 
       {/* Delete / Leave confirm Modal */}
       <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)}
-        title={confirmDelete?.originTripId ? 'Leave Trip' : 'Delete Trip'}>
-        {confirmDelete?.originTripId ? (
+        title={confirmDelete?.originTripId && confirmDelete.originTripId !== confirmDelete.id ? 'Leave Trip' : 'Delete Trip'}>
+        {confirmDelete?.originTripId && confirmDelete.originTripId !== confirmDelete.id ? (
           <>
             <p className="text-gray-600 text-sm mb-5">
               Leave <strong>{confirmDelete?.name}</strong>? You can rejoin via the share link.
