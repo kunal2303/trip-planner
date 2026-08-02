@@ -61,7 +61,7 @@ export const syncedDeleteItem = async (trip, sub, id) => {
 export async function createMemberTrip(ownerTrip, memberUid, sharedSections) {
   if (ownerTrip.uid === memberUid) throw new Error('You already own this trip.')
   // Create a new trip doc owned by the member
-  const { uid, shareToken, isPublic, members, memberTripIds, sharedSections: _, originTripId: _oid, ...tripFields } = ownerTrip
+  const { uid, id: _id, shareToken, isPublic, members, memberTripIds, sharedSections: _, originTripId: _oid, ...tripFields } = ownerTrip
   const memberTripRef = await addDoc(collection(db, 'trips'), {
     ...tripFields,
     uid: memberUid,
