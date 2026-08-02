@@ -41,22 +41,15 @@ async function resolveCoords(mapsUrl) {
 }
 
 async function fetchDrivingDistance(from, to) {
-  const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`
-  const res = await fetch(url)
-  if (!res.ok) return null
-  const data = await res.json()
-  const route = data.routes?.[0]
-  if (!route) return null
-  const meters = route.distance
-  const seconds = route.duration
-  const dist = meters >= 1000
-    ? `${(meters / 1000).toFixed(1)} km`
-    : `${Math.round(meters)} m`
-  const mins = Math.round(seconds / 60)
-  const time = mins >= 60
-    ? `${Math.floor(mins / 60)}h ${mins % 60}m`
-    : `${mins} min`
-  return `${dist} · ${time}`
+  try {
+    const res = await fetch(
+      `/api/directions?olat=${from.lat}&olng=${from.lng}&dlat=${to.lat}&dlng=${to.lng}`
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.distance && data.duration) return `${data.distance} · ${data.duration}`
+  } catch {}
+  return null
 }
 
 function DirectionsChip({ from, to }) {
