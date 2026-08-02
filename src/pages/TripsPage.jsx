@@ -246,7 +246,14 @@ export default function TripsPage() {
                 Cancel
               </button>
               <button
-                onClick={() => { deleteTrip(confirmDelete.id); setConfirmDelete(null) }}
+                onClick={async () => {
+                  try {
+                    await deleteDoc(doc(db, 'trips', confirmDelete.id))
+                    setConfirmDelete(null)
+                  } catch (err) {
+                    alert('Delete failed: ' + err.message + ' | id: ' + confirmDelete.id + ' | uid: ' + confirmDelete.uid + ' | user: ' + user.uid)
+                  }
+                }}
                 className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
                 Delete
               </button>
