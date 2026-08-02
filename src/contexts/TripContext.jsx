@@ -18,32 +18,12 @@ export function TripProvider({ children }) {
   useEffect(() => {
     if (!user) { setTrips([]); setLoading(false); return }
 
-    let owned = [], joined = []
-    const merge = () => {
-      const all = [...owned, ...joined]
-      const deduped = [...new Map(all.map(t => [t.id, t])).values()]
-      setTrips(deduped.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')))
+    const q = query(collection(db, 'trips'), where('uid', '==', user.uid))
+    return onSnapshot(q, snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      setTrips(all.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')))
       setLoading(false)
-    }
-
-    const q1 = query(collection(db, 'trips'), where('uid', '==', user.uid))
-    const q2 = query(collection(db, 'trips'), where('members', 'array-contains', user.uid))
-
-    const u1 = onSnapshot(q1, snap => {
-      owned = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      merge()
-    }, err => { console.error('owned query error:', err.message); setError(err.message); setLoading(false) })
-
-    const u2 = onSnapshot(q2, snap => {
-      joined = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      merge()
-    }, err => {
-      // members query can fail if no docs have a members field yet — treat as empty
-      console.warn('members query error (non-fatal):', err.message)
-      merge()
-    })
-
-    return () => { u1(); u2() }
+    }, err => { console.error('trips query error:', err.message); setError(err.message); setLoading(false) })
   }, [user])
 
   const createTrip = (data) =>
