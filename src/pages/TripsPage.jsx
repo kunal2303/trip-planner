@@ -221,11 +221,12 @@ export default function TripsPage() {
               </button>
               <button
                 onClick={async () => {
+                  console.log('leaving trip:', JSON.stringify(confirmDelete))
                   try {
                     await deleteTrip(confirmDelete.id)
                     setConfirmDelete(null)
                   } catch (err) {
-                    alert('Leave failed: ' + err.message)
+                    alert('Leave failed: ' + err.message + ' | trip uid: ' + confirmDelete.uid + ' | user: ' + user.uid)
                   }
                 }}
                 className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
