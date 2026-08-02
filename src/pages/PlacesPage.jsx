@@ -11,7 +11,7 @@ const EMPTY = { name: '', category: 'Restaurant', address: '', mapsUrl: '', note
 
 export default function PlacesPage() {
   const { tripId } = useParams()
-  const { activeTrip } = useOutletContext() || {}
+  const { activeTrip, isOwner } = useOutletContext() || {}
   const [items, setItems] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
@@ -52,9 +52,11 @@ export default function PlacesPage() {
             <p className="text-xs text-gray-400 mt-0.5">{visitedCount}/{items.length} visited</p>
           )}
         </div>
-        <button onClick={openAdd} className="btn-ghost border border-indigo-200">
+        {isOwner && (
+          <button onClick={openAdd} className="btn-ghost border border-indigo-200">
             <Plus size={15} /> Add
           </button>
+        )}
       </div>
 
       {/* Category filter */}
@@ -108,12 +110,16 @@ export default function PlacesPage() {
                     ? <CheckCircle size={20} className="text-indigo-500" />
                     : <Circle size={20} />}
                 </button>
-                <button onClick={() => openEdit(item)} className="p-1 text-gray-300 hover:text-indigo-400 transition">
-                  <Pencil size={14} />
-                </button>
-                <button onClick={() => syncedDeleteItem(activeTrip, 'places', item.id)} className="p-1 text-gray-300 hover:text-red-400 transition">
-                  <Trash2 size={14} />
-                </button>
+                {isOwner && (
+                  <button onClick={() => openEdit(item)} className="p-1 text-gray-300 hover:text-indigo-400 transition">
+                    <Pencil size={14} />
+                  </button>
+                )}
+                {isOwner && (
+                  <button onClick={() => syncedDeleteItem(activeTrip, 'places', item.id)} className="p-1 text-gray-300 hover:text-red-400 transition">
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
             </div>
           </div>

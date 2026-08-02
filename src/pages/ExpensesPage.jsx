@@ -11,7 +11,7 @@ const EMPTY = { title: '', amount: '', currency: 'INR', category: 'Food', date: 
 
 export default function ExpensesPage() {
   const { tripId } = useParams()
-  const { activeTrip } = useOutletContext() || {}
+  const { activeTrip, isOwner } = useOutletContext() || {}
   const [items, setItems] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
@@ -58,10 +58,12 @@ export default function ExpensesPage() {
             {CURRENCIES.map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-xl text-sm font-medium">
-          <Plus size={14} /> Add
-        </button>
+        {isOwner && (
+          <button onClick={openAdd}
+            className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-xl text-sm font-medium">
+            <Plus size={14} /> Add
+          </button>
+        )}
       </div>
 
       <div className="bg-blue-600 text-white rounded-2xl p-4 mb-4">
@@ -89,12 +91,16 @@ export default function ExpensesPage() {
               {item.notes && <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{item.notes}</p>}
             </div>
             <span className="font-semibold text-gray-800 text-sm whitespace-nowrap">{item.currency} {parseFloat(item.amount).toFixed(2)}</span>
-            <button onClick={() => openEdit(item)} className="p-1.5 text-gray-300 hover:text-indigo-400 transition">
-              <Pencil size={14} />
-            </button>
-            <button onClick={() => syncedDeleteItem(activeTrip, 'expenses', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
-              <Trash2 size={14} />
-            </button>
+            {isOwner && (
+              <button onClick={() => openEdit(item)} className="p-1.5 text-gray-300 hover:text-indigo-400 transition">
+                <Pencil size={14} />
+              </button>
+            )}
+            {isOwner && (
+              <button onClick={() => syncedDeleteItem(activeTrip, 'expenses', item.id)} className="p-1.5 text-gray-300 hover:text-red-400 transition">
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         ))}
       </div>

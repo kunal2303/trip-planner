@@ -96,7 +96,7 @@ export default function TripLayout() {
 
       {/* Page content */}
       <main className="flex-1 max-w-lg w-full mx-auto px-4 py-4 pb-nav overflow-y-auto">
-        <Outlet context={{ activeTrip }} />
+        <Outlet context={{ activeTrip, isOwner }} />
       </main>
 
       {/* Bottom nav bar */}

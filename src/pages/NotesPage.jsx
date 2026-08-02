@@ -5,7 +5,7 @@ import { subscribeSub, syncedAddItem, syncedUpdateItem, syncedDeleteItem } from 
 
 export default function NotesPage() {
   const { tripId } = useParams()
-  const { activeTrip } = useOutletContext() || {}
+  const { activeTrip, isOwner } = useOutletContext() || {}
   const [notes, setNotes] = useState([])
   const [selected, setSelected] = useState(null)
   const [content, setContent] = useState('')
@@ -76,9 +76,11 @@ export default function NotesPage() {
     <div>
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-base font-bold text-gray-900">Notes</h2>
-        <button onClick={createNote} className="btn-ghost border border-indigo-200">
-          <Plus size={15} /> New
-        </button>
+        {isOwner && (
+          <button onClick={createNote} className="btn-ghost border border-indigo-200">
+            <Plus size={15} /> New
+          </button>
+        )}
       </div>
 
       {notes.length === 0 && (
@@ -101,10 +103,12 @@ export default function NotesPage() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs text-gray-300">{timeAgo(note.createdAt)}</span>
-              <button onClick={e => { e.stopPropagation(); syncedDeleteItem(activeTrip, 'notes', note.id) }}
-                className="p-1.5 text-gray-300 hover:text-red-400 transition">
-                <Trash2 size={14} />
-              </button>
+              {isOwner && (
+                <button onClick={e => { e.stopPropagation(); syncedDeleteItem(activeTrip, 'notes', note.id) }}
+                  className="p-1.5 text-gray-300 hover:text-red-400 transition">
+                  <Trash2 size={14} />
+                </button>
+              )}
               <ChevronRight size={14} className="text-gray-300" />
             </div>
           </div>

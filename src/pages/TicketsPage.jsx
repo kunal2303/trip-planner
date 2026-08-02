@@ -21,7 +21,7 @@ function pageUrl(url, page) {
 export default function TicketsPage() {
   const { tripId } = useParams()
   const { user } = useAuth()
-  const { activeTrip } = useOutletContext() || {}
+  const { activeTrip, isOwner } = useOutletContext() || {}
   const [items, setItems] = useState([])
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
@@ -117,35 +117,37 @@ export default function TicketsPage() {
     <div>
       <h2 className="text-base font-bold text-gray-900 mb-5">Tickets & Documents</h2>
 
-      <div className="card p-4 mb-5 space-y-3">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Add Document</p>
-        <input
-          ref={titleRef}
-          placeholder="Document title *"
-          value={form.title}
-          onChange={e => { setForm(f => ({ ...f, title: e.target.value })); setTitleError(false) }}
-          className={`field transition ${titleError ? 'ring-2 ring-red-400 border-red-300 placeholder-red-400' : ''}`}
-        />
-        {titleError && <p className="text-xs text-red-500 -mt-1">Enter a title before attaching a file</p>}
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map(c => (
-            <button key={c} type="button" onClick={() => setForm(f => ({ ...f, category: c }))}
-              className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition ${
-                form.category === c ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
-              }`}>
-              {c}
-            </button>
-          ))}
+      {isOwner && (
+        <div className="card p-4 mb-5 space-y-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Add Document</p>
+          <input
+            ref={titleRef}
+            placeholder="Document title *"
+            value={form.title}
+            onChange={e => { setForm(f => ({ ...f, title: e.target.value })); setTitleError(false) }}
+            className={`field transition ${titleError ? 'ring-2 ring-red-400 border-red-300 placeholder-red-400' : ''}`}
+          />
+          {titleError && <p className="text-xs text-red-500 -mt-1">Enter a title before attaching a file</p>}
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map(c => (
+              <button key={c} type="button" onClick={() => setForm(f => ({ ...f, category: c }))}
+                className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition ${
+                  form.category === c ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
+                }`}>
+                {c}
+              </button>
+            ))}
+          </div>
+          <label className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-4 text-sm font-medium cursor-pointer transition ${
+            uploading ? 'border-indigo-300 bg-indigo-50 text-indigo-500' : 'border-indigo-300 text-indigo-500 hover:bg-indigo-50'
+          }`}>
+            <Upload size={16} />
+            {uploading ? 'Uploading…' : 'Attach PDFs or images'}
+            <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={handleFileUpload} disabled={uploading} />
+          </label>
+          {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
         </div>
-        <label className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-4 text-sm font-medium cursor-pointer transition ${
-          uploading ? 'border-indigo-300 bg-indigo-50 text-indigo-500' : 'border-indigo-300 text-indigo-500 hover:bg-indigo-50'
-        }`}>
-          <Upload size={16} />
-          {uploading ? 'Uploading…' : 'Attach PDFs or images'}
-          <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={handleFileUpload} disabled={uploading} />
-        </label>
-        {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
-      </div>
+      )}
 
       {items.length === 0 && (
         <div className="text-center py-12">
@@ -169,9 +171,11 @@ export default function TicketsPage() {
                   <p className="font-semibold text-sm text-gray-900 truncate">{item.title}</p>
                   <p className="text-xs text-gray-400">{item.category} · {files.length} file{files.length !== 1 ? 's' : ''}</p>
                 </div>
-                <button onClick={e => { e.stopPropagation(); handleDelete(item) }} className="p-1.5 text-gray-300 hover:text-red-400 transition">
-                  <Trash2 size={14} />
-                </button>
+                {isOwner && (
+                  <button onClick={e => { e.stopPropagation(); handleDelete(item) }} className="p-1.5 text-gray-300 hover:text-red-400 transition">
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
               {expanded === item.id && (
                 <div className="px-4 pb-4 pt-0">

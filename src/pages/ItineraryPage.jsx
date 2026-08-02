@@ -111,7 +111,7 @@ function SortableItem({ id, children }) {
 
 export default function ItineraryPage() {
   const { tripId } = useParams()
-  const { activeTrip } = useOutletContext() || {}
+  const { activeTrip, isOwner } = useOutletContext() || {}
   const [items, setItems] = useState([])
   const [places, setPlaces] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -205,9 +205,11 @@ export default function ItineraryPage() {
     <div>
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-base font-bold text-gray-900">Itinerary</h2>
-        <button onClick={openAdd} className="btn-ghost border border-indigo-200">
-          <Plus size={15} /> Add
-        </button>
+        {isOwner && (
+          <button onClick={openAdd} className="btn-ghost border border-indigo-200">
+            <Plus size={15} /> Add
+          </button>
+        )}
       </div>
 
       {items.length === 0 && (
@@ -268,9 +270,11 @@ export default function ItineraryPage() {
                                   <div className="absolute -left-5 top-3 w-3 h-3 rounded-full bg-white border-2 border-indigo-400" />
                                   <div className="card p-4">
                                     <div className="flex items-start justify-between gap-2">
-                                      <button {...dragHandleProps} className="mt-0.5 p-0.5 text-gray-300 hover:text-gray-400 cursor-grab active:cursor-grabbing touch-none shrink-0">
+                                      {isOwner && (
+                                        <button {...dragHandleProps} className="mt-0.5 p-0.5 text-gray-300 hover:text-gray-400 cursor-grab active:cursor-grabbing touch-none shrink-0">
                                           <GripVertical size={14} />
                                         </button>
+                                      )}
                                       <div className="flex-1 min-w-0">
                                         <p className="font-semibold text-gray-900 text-sm">{item.title}</p>
                                         <div className="flex flex-wrap items-center gap-3 mt-1.5">
@@ -294,14 +298,18 @@ export default function ItineraryPage() {
                                         {item.notes && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.notes}</p>}
                                       </div>
                                       <div className="flex items-center gap-1 shrink-0">
-                                        <button onClick={() => openEdit(item)}
+                                        {isOwner && (
+                                          <button onClick={() => openEdit(item)}
                                             className="p-1.5 text-gray-300 hover:text-indigo-400 rounded-lg transition">
                                             <Pencil size={14} />
                                           </button>
+                                        )}
+                                        {isOwner && (
                                           <button onClick={() => syncedDeleteItem(activeTrip, 'itinerary', item.id)}
                                             className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg transition">
                                             <Trash2 size={14} />
                                           </button>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
