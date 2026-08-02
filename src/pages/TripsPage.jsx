@@ -41,6 +41,7 @@ export default function TripsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [deleteError, setDeleteError] = useState('')
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -209,25 +210,27 @@ export default function TripsPage() {
       </Modal>
 
       {/* Delete / Leave confirm Modal */}
-      <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)}
+      <Modal open={!!confirmDelete} onClose={() => { setConfirmDelete(null); setDeleteError('') }}
         title={confirmDelete?.originTripId && confirmDelete.originTripId !== confirmDelete.id ? 'Leave Trip' : 'Delete Trip'}>
         {confirmDelete?.originTripId && confirmDelete.originTripId !== confirmDelete.id ? (
           <>
             <p className="text-gray-600 text-sm mb-5">
               Leave <strong>{confirmDelete?.name}</strong>? You can rejoin via the share link.
             </p>
+            {deleteError && <p className="text-red-500 text-xs mb-3">{deleteError}</p>}
             <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(null)}
+              <button onClick={() => { setConfirmDelete(null); setDeleteError('') }}
                 className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-600">
                 Cancel
               </button>
               <button
                 onClick={async () => {
+                  setDeleteError('')
                   try {
                     await deleteDoc(doc(db, 'trips', confirmDelete.id))
                     setConfirmDelete(null)
                   } catch (err) {
-                    alert('Leave failed: ' + err.message + ' | trip id: ' + confirmDelete.id + ' | trip uid: ' + confirmDelete.uid + ' | user: ' + user.uid + ' | originTripId: ' + confirmDelete.originTripId)
+                    setDeleteError(err.message || 'Failed to leave trip')
                   }
                 }}
                 className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
@@ -240,18 +243,20 @@ export default function TripsPage() {
             <p className="text-gray-600 text-sm mb-5">
               Delete <strong>{confirmDelete?.name}</strong>? This cannot be undone.
             </p>
+            {deleteError && <p className="text-red-500 text-xs mb-3">{deleteError}</p>}
             <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(null)}
+              <button onClick={() => { setConfirmDelete(null); setDeleteError('') }}
                 className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-600">
                 Cancel
               </button>
               <button
                 onClick={async () => {
+                  setDeleteError('')
                   try {
                     await deleteDoc(doc(db, 'trips', confirmDelete.id))
                     setConfirmDelete(null)
                   } catch (err) {
-                    alert('Delete failed: ' + err.message + ' | id: ' + confirmDelete.id + ' | uid: ' + confirmDelete.uid + ' | user: ' + user.uid)
+                    setDeleteError(err.message || 'Failed to delete trip')
                   }
                 }}
                 className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-semibold">
