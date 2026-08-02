@@ -31,7 +31,7 @@ export default function TripLayout() {
     if (trip) setActiveTrip(trip)
   }, [trips, tripId])
 
-  const isOwner = activeTrip?.uid === user?.uid
+  const isOwner = activeTrip?.uid === user?.uid && !activeTrip?.originTripId
   const tripLoaded = !!activeTrip
 
   const openShareModal = () => {
